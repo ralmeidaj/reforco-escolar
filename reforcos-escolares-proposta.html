@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reforços Escolares — Proposta de Arquitetura</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:    #2563eb;
+      --blue-lt: #eff6ff;
+      --blue-md: #bfdbfe;
+      --green:   #16a34a;
+      --green-lt:#f0fdf4;
+      --purple:  #7c3aed;
+      --purple-lt:#f5f3ff;
+      --orange:  #ea580c;
+      --orange-lt:#fff7ed;
+      --pink:    #db2777;
+      --pink-lt: #fdf2f8;
+      --teal:    #0d9488;
+      --teal-lt: #f0fdfa;
+      --gray:    #64748b;
+      --gray-lt: #f8fafc;
+      --border:  #e2e8f0;
+      --text:    #1e293b;
+      --text-sm: #475569;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f1f5f9;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* ── HEADER ─────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #7c3aed 100%);
+      color: #fff;
+      padding: 60px 40px 48px;
+      text-align: center;
+    }
+    header .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px;
+      padding: 4px 16px;
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    header h1 { font-size: clamp(28px, 5vw, 48px); font-weight: 800; margin-bottom: 12px; }
+    header p  { font-size: 18px; opacity: .85; max-width: 580px; margin: 0 auto 32px; }
+    .header-pills { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .header-pills span {
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* ── LAYOUT ─────────────────────────────────────────── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
+
+    section { margin-top: 56px; }
+    section > h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    section > h2::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── TENANCY DIAGRAM ─────────────────────────────────── */
+    .tenancy-diagram {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      display: flex;
+      gap: 0;
+      align-items: stretch;
+      overflow: hidden;
+    }
+    .tenancy-tenants {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .tenant-pill {
+      background: var(--blue-lt);
+      border: 1.5px solid var(--blue-md);
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--blue);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tenant-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); }
+    .tenancy-arrow {
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      color: var(--gray);
+      font-size: 28px;
+    }
+    .tenancy-db {
+      width: 220px;
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      border-radius: 12px;
+      padding: 24px;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      gap: 8px;
+    }
+    .tenancy-db .db-icon { font-size: 36px; }
+    .tenancy-db strong { font-size: 15px; }
+    .tenancy-db small  { font-size: 12px; opacity: .8; }
+
+    /* ── STACK TABLE ─────────────────────────────────────── */
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .stack-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .stack-card .sc-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gray); }
+    .stack-card .sc-value { font-size: 16px; font-weight: 700; color: var(--text); }
+    .stack-card .sc-cost  { font-size: 13px; }
+    .cost-free  { color: var(--green); font-weight: 700; }
+    .cost-paid  { color: var(--orange); font-weight: 700; }
+
+    /* ── HOSTING BOX ─────────────────────────────────────── */
+    .hosting-box {
+      background: linear-gradient(135deg, #0f172a, #1e3a8a);
+      border-radius: 16px;
+      padding: 32px;
+      color: #fff;
+      display: flex;
+      gap: 32px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+    .hosting-box .hb-main { flex: 1; min-width: 260px; }
+    .hosting-box h3 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+    .hosting-box p  { opacity: .8; font-size: 15px; margin-bottom: 16px; }
+    .hosting-box .hb-specs {
+      display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .hosting-box .hb-spec {
+      background: rgba(255,255,255,0.12);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 13px;
+    }
+    .hosting-box .hb-price {
+      text-align: center;
+      background: rgba(255,255,255,0.1);
+      border: 1.5px solid rgba(255,255,255,0.2);
+      border-radius: 14px;
+      padding: 24px 32px;
+      min-width: 140px;
+    }
+    .hosting-box .hb-price .price { font-size: 42px; font-weight: 900; }
+    .hosting-box .hb-price .unit  { font-size: 13px; opacity: .7; }
+    .alt-hosting {
+      margin-top: 12px;
+      font-size: 14px;
+      color: var(--text-sm);
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+    }
+
+    /* ── ROLES ───────────────────────────────────────────── */
+    .roles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+      gap: 16px;
+    }
+    .role-card {
+      border-radius: 14px;
+      padding: 20px;
+      border: 1.5px solid transparent;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .role-card .rc-icon { font-size: 32px; }
+    .role-card .rc-name { font-size: 15px; font-weight: 700; }
+    .role-card .rc-desc { font-size: 13px; color: var(--text-sm); }
+    .role-card.r-super   { background: #1e293b; color: #fff; border-color: #334155; }
+    .role-card.r-super .rc-desc { color: #94a3b8; }
+    .role-card.r-admin   { background: var(--blue-lt);   border-color: var(--blue-md);   }
+    .role-card.r-teacher { background: var(--green-lt);  border-color: #bbf7d0; }
+    .role-card.r-student { background: var(--purple-lt); border-color: #ddd6fe; }
+    .role-card.r-guardian{ background: var(--orange-lt); border-color: #fed7aa; }
+
+    /* ── SPECS ───────────────────────────────────────────── */
+    .specs-list { display: flex; flex-direction: column; gap: 20px; }
+
+    .spec-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .spec-header {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+    }
+    .spec-num {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      min-height: 56px;
+      font-size: 20px;
+      font-weight: 900;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .spec-title-block {
+      padding: 16px 20px;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .spec-title-block h3 { font-size: 17px; font-weight: 700; }
+    .spec-title-block .spec-subtitle { font-size: 13px; color: var(--text-sm); }
+    .spec-mvp {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #fef9c3;
+      color: #854d0e;
+      white-space: nowrap;
+    }
+    .spec-body {
+      padding: 0 24px 24px;
+      border-top: 1px solid var(--border);
+    }
+    .spec-body .tables-row {
+      padding-top: 18px;
+      margin-bottom: 16px;
+    }
+    .tables-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--gray);
+      margin-bottom: 8px;
+    }
+    .table-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .table-chip {
+      font-size: 12px;
+      font-family: 'SF Mono', 'Consolas', monospace;
+      background: var(--gray-lt);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 10px;
+      color: var(--text-sm);
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 8px;
+    }
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-sm);
+      padding: 4px 0;
+    }
+    .feature-item::before {
+      content: '›';
+      color: var(--blue);
+      font-weight: 700;
+      font-size: 18px;
+      line-height: 1.2;
+      flex-shrink: 0;
+    }
+
+    /* spec colors */
+    .sc1 { background: #2563eb; }
+    .sc2 { background: #16a34a; }
+    .sc3 { background: #7c3aed; }
+    .sc4 { background: #db2777; }
+    .sc5 { background: #ea580c; }
+    .sc6 { background: #0d9488; }
+    .sc7 { background: #0284c7; }
+    .sc8 { background: #4b5563; }
+
+    /* ── ROADMAP ─────────────────────────────────────────── */
+    .roadmap {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .phase-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+    .phase-card .ph-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .phase-card h4 { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+    .phase-card ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    .phase-card li {
+      font-size: 13px;
+      color: var(--text-sm);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .phase-card li::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .ph1 .ph-label, .ph1 li::before { color: #2563eb; background: #2563eb; }
+    .ph2 .ph-label, .ph2 li::before { color: #16a34a; background: #16a34a; }
+    .ph3 .ph-label, .ph3 li::before { color: #7c3aed; background: #7c3aed; }
+    .ph4 .ph-label, .ph4 li::before { color: #0d9488; background: #0d9488; }
+
+    /* ── SECURITY ────────────────────────────────────────── */
+    .security-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .sec-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .sec-icon { font-size: 24px; flex-shrink: 0; }
+    .sec-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .sec-desc  { font-size: 13px; color: var(--text-sm); }
+
+    /* ── FOOTER ─────────────────────────────────────────── */
+    footer {
+      margin-top: 64px;
+      text-align: center;
+      padding: 32px 24px;
+      border-top: 1px solid var(--border);
+      background: #fff;
+      font-size: 13px;
+      color: var(--gray);
+    }
+
+    /* ── RESPONSIVE ─────────────────────────────────────── */
+    @media (max-width: 640px) {
+      header { padding: 40px 20px 36px; }
+      .tenancy-diagram { flex-direction: column; }
+      .tenancy-arrow { transform: rotate(90deg); align-self: center; }
+      .tenancy-db { width: 100%; }
+      .hosting-box { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ HEADER ═══════════════════════════════ -->
+<header>
+  <div class="badge">Proposta de Sistema</div>
+  <h1>📚 Reforços Escolares</h1>
+  <p>Plataforma SaaS multi-tenant para gestão de aulas de reforço — professores, alunos, responsáveis e administradores em um só lugar.</p>
+  <div class="header-pills">
+    <span>⚡ Multi-tenant</span>
+    <span>💰 Hospedagem barata</span>
+    <span>🔒 Seguro por design</span>
+    <span>📱 Responsivo</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ═══════════════════════════ TENANCY ═══════════════════════════ -->
+  <section>
+    <h2>🏗️ Estratégia de Multi-tenancy</h2>
+    <div class="tenancy-diagram">
+      <div class="tenancy-tenants">
+        <div class="tenant-pill"><div class="dot"></div> escola-silva.app.com → tenant_id: aaa</div>
+        <div class="tenant-pill"><div class="dot"></div> reforco-top.app.com → tenant_id: bbb</div>
+        <div class="tenant-pill"><div class="dot"></div> estudo-kids.app.com → tenant_id: ccc</div>
+        <div style="font-size:13px;color:var(--text-sm);margin-top:8px;padding:12px;background:var(--gray-lt);border-radius:10px;border:1px solid var(--border);">
+          <strong>TenantGuard</strong> resolve o tenant pelo subdomínio. <strong>TenantInterceptor</strong> injeta automaticamente o <code style="background:#e2e8f0;padding:2px 6px;border-radius:4px;font-size:12px">tenant_id</code> em todas as queries — nenhum serviço filtra manualmente.
+        </div>
+      </div>
+      <div class="tenancy-arrow">→</div>
+      <div class="tenancy-db">
+        <div class="db-icon">🗄️</div>
+        <strong>PostgreSQL</strong>
+        <small>Instância única<br>Row-level tenancy<br>tenant_id em todas as tabelas</small>
+      </div>
+    </div>
+    <div style="margin-top:12px;font-size:13px;color:var(--text-sm);background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 18px;">
+      <strong>Por que Row-Level e não Schema-per-Tenant?</strong> Schema-per-tenant exige uma conexão de banco por cliente e dificulta migrations em lote. Row-level usa uma instância única, custo fixo e migrations rodam uma vez para todos os tenants — ideal para hospedagem barata.
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ STACK ═════════════════════════════ -->
+  <section>
+    <h2>⚙️ Stack Tecnológico</h2>
+    <div class="stack-grid">
+      <div class="stack-card">
+        <div class="sc-label">Backend</div>
+        <div class="sc-value">NestJS</div>
+        <div class="sc-cost">Monolito modular</div>
+      </div>
+      <div class="stack-card">
+        <div class="sc-label">Frontend</div>
+        <div class="sc-value">Next.js 15</div>
+        <div class="sc-cost">App Router + RSC</div>
+      </div>
+      <div class="stack-card">
+        <div class="sc-label">Banco de Dados</div>
+        <div class="sc-value">PostgreSQL</div>
+        <div class="sc-cost">TypeORM, migrations</div>
+      </div>
+      <div class="stack-card">
+        <div class="sc-label">Cache / Filas</div>
+        <div class="sc-value">Redis</div>
+        <div class="sc-cost cost-free">Upstash free tier</div>
+      </div>
+      <div class="stack-card">
+        <div class="sc-label">E-mail</div>
+        <div class="sc-value">Resend</div>
+        <div class="sc-cost cost-free">3.000/mês grátis</div>
+      </div>
+      <div class="stack-card">
+        <div class="sc-label">Storage</div>
+        <div class="sc-value">Cloudflare R2</div>
+        <div class="sc-cost cost-free">10 GB grátis</div>
+      </div>
+      <div class="stack-card">
+        <div class="sc-label">Auth JWT</div>
+        <div class="sc-value">@nestjs/jwt</div>
+        <div class="sc-cost">Access 15min + Refresh 7d</div>
+      </div>
+      <div class="stack-card">
+        <div class="sc-label">Filas async</div>
+        <div class="sc-value">BullMQ</div>
+        <div class="sc-cost">PDFs, notificações</div>
+      </div>
+    </div>
+
+    <div class="hosting-box">
+      <div class="hb-main">
+        <h3>🇩🇪 Hetzner VPS CAX11 — Recomendado</h3>
+        <p>Um único servidor ARM roda todo o stack via Docker Compose + Nginx + Certbot SSL. Aguenta centenas de tenants pequenos sem escalar.</p>
+        <div class="hb-specs">
+          <div class="hb-spec">2 vCPU ARM</div>
+          <div class="hb-spec">4 GB RAM</div>
+          <div class="hb-spec">40 GB NVMe</div>
+          <div class="hb-spec">20 TB tráfego</div>
+        </div>
+      </div>
+      <div class="hb-price">
+        <div class="price">€3</div>
+        <div class="unit">/mês</div>
+        <div style="font-size:11px;opacity:.7;margin-top:4px;">+ IVA</div>
+      </div>
+    </div>
+    <div class="alt-hosting">
+      <strong>Alternativa zero DevOps:</strong> Railway Hobby (~$5/mês) — deploy com git push, banco e Redis incluídos. Ideal para validar o MVP antes de migrar para VPS próprio.
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ ROLES ═════════════════════════════ -->
+  <section>
+    <h2>👥 Roles do Sistema</h2>
+    <div class="roles-grid">
+      <div class="role-card r-super">
+        <div class="rc-icon">🌐</div>
+        <div class="rc-name">super_admin</div>
+        <div class="rc-desc">Você — gerencia todos os tenants da plataforma</div>
+      </div>
+      <div class="role-card r-admin">
+        <div class="rc-icon">🏫</div>
+        <div class="rc-name">tenant_admin</div>
+        <div class="rc-desc">Diretor ou dono da escola de reforço</div>
+      </div>
+      <div class="role-card r-teacher">
+        <div class="rc-icon">👩‍🏫</div>
+        <div class="rc-name">teacher</div>
+        <div class="rc-desc">Registra presença, notas de aula e tarefas</div>
+      </div>
+      <div class="role-card r-student">
+        <div class="rc-icon">🎒</div>
+        <div class="rc-name">student</div>
+        <div class="rc-desc">Visualiza calendário, tarefas e progresso</div>
+      </div>
+      <div class="role-card r-guardian">
+        <div class="rc-icon">👨‍👩‍👧</div>
+        <div class="rc-name">guardian</div>
+        <div class="rc-desc">Acompanha frequência, desempenho e faturas</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ SPECS ═════════════════════════════ -->
+  <section>
+    <h2>📋 Specs do Produto</h2>
+    <div class="specs-list">
+
+      <!-- SPEC 1 -->
+      <div class="spec-card">
+        <div class="spec-header">
+          <div class="spec-num sc1">1</div>
+          <div class="spec-title-block">
+            <div>
+              <h3>Tenancy + Auth</h3>
+              <div class="spec-subtitle">Cadastro de tenants, convites, login para todos os roles</div>
+            </div>
+            <span class="spec-mvp">MVP</span>
+          </div>
+        </div>
+        <div class="spec-body">
+          <div class="tables-row">
+            <div class="tables-label">Tabelas</div>
+            <div class="table-chips">
+              <span class="table-chip">tenants</span>
+              <span class="table-chip">users</span>
+              <span class="table-chip">refresh_tokens</span>
+              <span class="table-chip">invites</span>
+            </div>
+          </div>
+          <div class="features-grid">
+            <div class="feature-item">Cadastro self-service de tenant (escola)</div>
+            <div class="feature-item">Slug único → subdomínio automático</div>
+            <div class="feature-item">Login / logout / refresh token</div>
+            <div class="feature-item">Forgot / reset password via e-mail</div>
+            <div class="feature-item">Convites por e-mail com token (professor, aluno, responsável)</div>
+            <div class="feature-item">TenantGuard + TenantInterceptor globais</div>
+            <div class="feature-item">Perfil básico por role (foto, dados pessoais)</div>
+            <div class="feature-item">Rate limiting em endpoints de auth</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SPEC 2 -->
+      <div class="spec-card">
+        <div class="spec-header">
+          <div class="spec-num sc2">2</div>
+          <div class="spec-title-block">
+            <div>
+              <h3>Disciplinas, Turmas e Vínculos</h3>
+              <div class="spec-subtitle">Estrutura pedagógica e matrículas</div>
+            </div>
+            <span class="spec-mvp">MVP</span>
+          </div>
+        </div>
+        <div class="spec-body">
+          <div class="tables-row">
+            <div class="tables-label">Tabelas</div>
+            <div class="table-chips">
+              <span class="table-chip">subjects</span>
+              <span class="table-chip">groups</span>
+              <span class="table-chip">teacher_subjects</span>
+              <span class="table-chip">student_enrollments</span>
+              <span class="table-chip">guardian_students</span>
+            </div>
+          </div>
+          <div class="features-grid">
+            <div class="feature-item">CRUD de disciplinas com cor/ícone</div>
+            <div class="feature-item">Criação de turmas / níveis</div>
+            <div class="feature-item">Vincular professor ↔ disciplina</div>
+            <div class="feature-item">Matrícula de aluno em disciplinas</div>
+            <div class="feature-item">Vínculo responsável ↔ aluno (N:N)</div>
+            <div class="feature-item">Dashboard por role com KPIs básicos</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SPEC 3 -->
+      <div class="spec-card">
+        <div class="spec-header">
+          <div class="spec-num sc3">3</div>
+          <div class="spec-title-block">
+            <div>
+              <h3>Agendamento de Aulas</h3>
+              <div class="spec-subtitle">Disponibilidade, calendário e sessões recorrentes</div>
+            </div>
+            <span class="spec-mvp">MVP</span>
+          </div>
+        </div>
+        <div class="spec-body">
+          <div class="tables-row">
+            <div class="tables-label">Tabelas</div>
+            <div class="table-chips">
+              <span class="table-chip">availability_slots</span>
+              <span class="table-chip">sessions</span>
+            </div>
+          </div>
+          <div class="features-grid">
+            <div class="feature-item">Professor cadastra horários disponíveis (recorrentes ou avulsos)</div>
+            <div class="feature-item">Agendamento pelo admin ou responsável</div>
+            <div class="feature-item">Sessões recorrentes via rrule</div>
+            <div class="feature-item">Status: agendada → confirmada → realizada / cancelada</div>
+            <div class="feature-item">Canal: presencial ou online (link Meet)</div>
+            <div class="feature-item">Vista de calendário semanal / mensal</div>
+            <div class="feature-item">Cancelamento com motivo + notificação automática</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SPEC 4 -->
+      <div class="spec-card">
+        <div class="spec-header">
+          <div class="spec-num sc4">4</div>
+          <div class="spec-title-block">
+            <div>
+              <h3>Presença e Acompanhamento Pedagógico</h3>
+              <div class="spec-subtitle">Frequência, notas de aula, tarefas e evolução</div>
+            </div>
+            <span class="spec-mvp">MVP</span>
+          </div>
+        </div>
+        <div class="spec-body">
+          <div class="tables-row">
+            <div class="tables-label">Tabelas</div>
+            <div class="table-chips">
+              <span class="table-chip">attendances</span>
+              <span class="table-chip">session_notes</span>
+              <span class="table-chip">student_progress</span>
+              <span class="table-chip">tasks</span>
+            </div>
+          </div>
+          <div class="features-grid">
+            <div class="feature-item">Registro de presença: presente / ausente / justificado</div>
+            <div class="feature-item">Notas de aula pelo professor ao finalizar sessão</div>
+            <div class="feature-item">Tarefas criadas pelo professor; aluno marca como feita</div>
+            <div class="feature-item">Linha do tempo de evolução por disciplina</div>
+            <div class="feature-item">Nível do aluno: iniciante → básico → intermediário → avançado</div>
+            <div class="feature-item">Alerta automático para responsável em 2 faltas seguidas</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SPEC 5 -->
+      <div class="spec-card">
+        <div class="spec-header">
+          <div class="spec-num sc5">5</div>
+          <div class="spec-title-block">
+            <div>
+              <h3>Comunicação</h3>
+              <div class="spec-subtitle">Mensagens, notificações e avisos</div>
+            </div>
+          </div>
+        </div>
+        <div class="spec-body">
+          <div class="tables-row">
+            <div class="tables-label">Tabelas</div>
+            <div class="table-chips">
+              <span class="table-chip">messages</span>
+              <span class="table-chip">notifications</span>
+              <span class="table-chip">announcements</span>
+            </div>
+          </div>
+          <div class="features-grid">
+            <div class="feature-item">Chat 1:1 responsável ↔ professor</div>
+            <div class="feature-item">Notificações in-app: aula agendada, falta, tarefa nova</div>
+            <div class="feature-item">Avisos gerais do admin para roles selecionados</div>
+            <div class="feature-item">E-mail transacional: convites, reset, resumo semanal</div>
+            <div class="feature-item">Push notification via Expo (mobile) ou Web Push</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SPEC 6 -->
+      <div class="spec-card">
+        <div class="spec-header">
+          <div class="spec-num sc6">6</div>
+          <div class="spec-title-block">
+            <div>
+              <h3>Financeiro</h3>
+              <div class="spec-subtitle">Pacotes de aulas, pagamentos e alertas de saldo</div>
+            </div>
+          </div>
+        </div>
+        <div class="spec-body">
+          <div class="tables-row">
+            <div class="tables-label">Tabelas</div>
+            <div class="table-chips">
+              <span class="table-chip">plans</span>
+              <span class="table-chip">student_plans</span>
+              <span class="table-chip">payments</span>
+            </div>
+          </div>
+          <div class="features-grid">
+            <div class="feature-item">Admin cadastra pacotes (ex: 10 aulas Matemática — R$ 300)</div>
+            <div class="feature-item">Matrícula do aluno em pacote; saldo decrementado por sessão</div>
+            <div class="feature-item">Registro de pagamento manual (ou Asaas/Pix opcional)</div>
+            <div class="feature-item">Alerta quando aluno tem ≤ 2 aulas restantes</div>
+            <div class="feature-item">Relatório financeiro mensal por tenant</div>
+            <div class="feature-item">Histórico de pagamentos por aluno</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SPEC 7 -->
+      <div class="spec-card">
+        <div class="spec-header">
+          <div class="spec-num sc7">7</div>
+          <div class="spec-title-block">
+            <div>
+              <h3>Relatórios e Dashboards</h3>
+              <div class="spec-subtitle">KPIs por role, exportação PDF e resumos automáticos</div>
+            </div>
+          </div>
+        </div>
+        <div class="spec-body">
+          <div class="features-grid">
+            <div class="feature-item">Admin: alunos ativos, presença %, receita, aulas realizadas</div>
+            <div class="feature-item">Professor: carga horária, alunos por disciplina, tarefas pendentes</div>
+            <div class="feature-item">Responsável: frequência, progresso, próximas aulas, saldo</div>
+            <div class="feature-item">Aluno: próprio progresso, tarefas, calendário</div>
+            <div class="feature-item">Export PDF de desempenho por aluno (BullMQ + pdf-lib)</div>
+            <div class="feature-item">Materialized view para KPIs pesados (refresh agendado)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SPEC 8 -->
+      <div class="spec-card">
+        <div class="spec-header">
+          <div class="spec-num sc8">8</div>
+          <div class="spec-title-block">
+            <div>
+              <h3>Super Admin — Plataforma</h3>
+              <div class="spec-subtitle">Gestão global de tenants, planos e saúde da plataforma</div>
+            </div>
+          </div>
+        </div>
+        <div class="spec-body">
+          <div class="features-grid">
+            <div class="feature-item">Dashboard: tenants ativos, receita plataforma, uso de storage</div>
+            <div class="feature-item">Ativar / suspender / excluir tenant</div>
+            <div class="feature-item">Gestão de planos SaaS (free / pro / enterprise)</div>
+            <div class="feature-item">Impersonation: entrar no tenant como admin para suporte</div>
+            <div class="feature-item">Logs de auditoria globais</div>
+            <div class="feature-item">Auth separado com TOTP (2FA obrigatório)</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ ROADMAP ═══════════════════════════ -->
+  <section>
+    <h2>🗺️ Roadmap de Implementação</h2>
+    <div class="roadmap">
+      <div class="phase-card ph1">
+        <div class="ph-label">Fase 1 — MVP</div>
+        <h4>Semanas 1–4</h4>
+        <ul>
+          <li>Spec 1 — Tenancy + Auth</li>
+          <li>Spec 2 — Disciplinas e Vínculos</li>
+          <li>Spec 3 — Agendamento</li>
+          <li>Spec 4 — Presença e Pedagógico</li>
+        </ul>
+      </div>
+      <div class="phase-card ph2">
+        <div class="ph-label">Fase 2 — Comunicação</div>
+        <h4>Semanas 5–6</h4>
+        <ul>
+          <li>Spec 5 — Mensagens e Notificações</li>
+          <li>Push notifications</li>
+          <li>E-mail transacional</li>
+        </ul>
+      </div>
+      <div class="phase-card ph3">
+        <div class="ph-label">Fase 3 — Monetização</div>
+        <h4>Semanas 7–8</h4>
+        <ul>
+          <li>Spec 6 — Financeiro</li>
+          <li>Spec 7 — Relatórios PDF</li>
+          <li>Integração Asaas/Pix (opcional)</li>
+        </ul>
+      </div>
+      <div class="phase-card ph4">
+        <div class="ph-label">Fase 4 — Plataforma</div>
+        <h4>Semana 9+</h4>
+        <ul>
+          <li>Spec 8 — Super Admin</li>
+          <li>Billing SaaS por tenant</li>
+          <li>Onboarding self-service</li>
+        </ul>
+      </div>
+    </div>
+    <div style="margin-top:14px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px 20px;font-size:14px;color:var(--text-sm);">
+      <strong>As Specs 1–4 já formam um MVP demonstrável e funcional.</strong> Um admin consegue cadastrar professores e alunos, agendar aulas, registrar presença e ver o progresso — tudo em ~4 semanas com 1 desenvolvedor.
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ SECURITY ══════════════════════════ -->
+  <section>
+    <h2>🔒 Segurança por Design</h2>
+    <div class="security-grid">
+      <div class="sec-card">
+        <div class="sec-icon">🏢</div>
+        <div>
+          <div class="sec-title">Isolamento de Tenant</div>
+          <div class="sec-desc">TenantInterceptor garante que nenhuma query retorna dados de outro tenant. Testado por default.</div>
+        </div>
+      </div>
+      <div class="sec-card">
+        <div class="sec-icon">🍪</div>
+        <div>
+          <div class="sec-title">Tokens em Cookies HttpOnly</div>
+          <div class="sec-desc">Nunca expostos via JavaScript. Protege contra XSS por design.</div>
+        </div>
+      </div>
+      <div class="sec-card">
+        <div class="sec-icon">🛡️</div>
+        <div>
+          <div class="sec-title">Guards em cascata</div>
+          <div class="sec-desc">JwtAuthGuard → TenantGuard → RolesGuard → ThrottlerGuard. Nenhuma rota bypassa sem @Public().</div>
+        </div>
+      </div>
+      <div class="sec-card">
+        <div class="sec-icon">⏱️</div>
+        <div>
+          <div class="sec-title">Rate Limiting</div>
+          <div class="sec-desc">ThrottlerGuard global. Endpoints de auth com limites conservadores específicos.</div>
+        </div>
+      </div>
+      <div class="sec-card">
+        <div class="sec-icon">✅</div>
+        <div>
+          <div class="sec-title">Validação de Input</div>
+          <div class="sec-desc">ValidationPipe global com whitelist:true. DTOs obrigatórios em todos os @Body() — sem mass assignment.</div>
+        </div>
+      </div>
+      <div class="sec-card">
+        <div class="sec-icon">📝</div>
+        <div>
+          <div class="sec-title">Audit Logs</div>
+          <div class="sec-desc">Todas as ações administrativas gravadas com timestamp, userId e tenantId.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ═══════════════════════════════ FOOTER ═══════════════════════════════ -->
+<footer>
+  <strong>Reforços Escolares — Proposta de Arquitetura</strong><br>
+  Gerado em maio de 2026 · Stack: NestJS + Next.js 15 + PostgreSQL · Hosting: Hetzner VPS ~€3/mês
+</footer>
+
+</body>
+</html>

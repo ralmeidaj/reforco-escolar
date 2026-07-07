@@ -1,0 +1,8 @@
+packages:
+  - 'apps/*'
+allowBuilds:
+  '@scarf/scarf': true
+  bcrypt: true
+  msgpackr-extract: true
+  sharp: true
+  unrs-resolver: true

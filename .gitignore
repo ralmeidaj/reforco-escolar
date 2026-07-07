@@ -1,0 +1,26 @@
+node_modules/
+dist/
+.next/
+.expo/
+*.env
+!*.env.example
+.env.local
+
+# pnpm
+.pnpm-store/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# test coverage
+coverage/

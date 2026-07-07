@@ -1,0 +1,15 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^otplib$": "<rootDir>/__mocks__/otplib.js"
+  },
+  "globalSetup": "./setup.ts",
+  "maxWorkers": 1,
+  "forceExit": true
+}
