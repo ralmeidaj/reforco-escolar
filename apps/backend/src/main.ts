@@ -44,6 +44,7 @@ async function bootstrap() {
 
   const httpAdapter = app.getHttpAdapter();
   httpAdapter.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+  httpAdapter.get('/', (_req, res) => res.status(200).json({ name: 'Reforços Escolares API', version: '1.0', status: 'ok' }));
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
