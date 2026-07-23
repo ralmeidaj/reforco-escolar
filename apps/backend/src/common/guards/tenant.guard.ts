@@ -26,10 +26,14 @@ export class TenantGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
 
-    // Mobile: X-Tenant-Slug header; Web: subdomínio (só se hostname for algo como escola.app.com)
+    // Mobile usa X-Tenant-Slug; Web usa subdomínio apenas se vier do cliente explicitamente
     const headerSlug = request.headers['x-tenant-slug'] as string | undefined;
+
+    // Rotas públicas sem header explícito passam sem contexto de tenant
+    // (ex: POST /tenants para criar escola, GET /health)
+    if (isPublic && !headerSlug) return true;
+
     const hostname = request.hostname ?? '';
-    // Hostname é subdomain real apenas se contém ponto E não é IP puro
     const hostnameSlug =
       hostname.includes('.') && !/^[\d.]+$/.test(hostname)
         ? hostname.split('.')[0]
@@ -38,7 +42,6 @@ export class TenantGuard implements CanActivate {
     const slug = headerSlug ?? hostnameSlug;
 
     if (!slug) {
-      // Rotas públicas sem slug (ex: POST /tenants) passam sem contexto de tenant
       if (isPublic) return true;
       throw new NotFoundException('Tenant não identificado');
     }
