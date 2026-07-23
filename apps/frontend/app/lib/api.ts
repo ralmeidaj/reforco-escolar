@@ -3,14 +3,14 @@ import axios, { AxiosError, AxiosInstance } from 'axios';
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export function getTenantSlug(): string {
-  // Em produção usa o subdomínio; em dev usa o cookie tenant_slug
   if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    const parts = host.split('.');
-    if (parts.length >= 3) return parts[0]; // subdomínio real em produção
-    // fallback local: lê o cookie tenant_slug
+    // Cookie tem prioridade — definido explicitamente pelo formulário de login/cadastro
     const match = document.cookie.match(/(?:^|;\s*)tenant_slug=([^;]+)/);
     if (match) return decodeURIComponent(match[1]);
+    // Fallback: subdomínio (para quando cada tenant tiver domínio próprio)
+    const host = window.location.hostname;
+    const parts = host.split('.');
+    if (parts.length >= 3) return parts[0];
   }
   return '';
 }
