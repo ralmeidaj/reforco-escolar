@@ -136,19 +136,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-32 rounded-bl-full bg-white/5" />
 
         {/* Logo + badge */}
-        <div className="flex h-16 items-center justify-between px-5">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col px-4 pb-2 pt-3">
+          <div className="flex items-start justify-between">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-8 w-auto object-contain" />
-            {badge && (
-              <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', badge.className)}>
-                {badge.label}
-              </span>
-            )}
+            <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-14 w-auto object-contain" />
+            <button onClick={() => setSidebarOpen(false)} className="mt-1 rounded-lg p-1 text-white/60 hover:bg-white/10 lg:hidden">
+              <CloseIcon />
+            </button>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="rounded-lg p-1 text-white/60 hover:bg-white/10 lg:hidden">
-            <CloseIcon />
-          </button>
+          {badge && (
+            <span className={cn('mt-1 w-fit rounded-full px-2 py-0.5 text-xs font-medium', badge.className)}>
+              {badge.label}
+            </span>
+          )}
         </div>
 
         {/* Nav */}
