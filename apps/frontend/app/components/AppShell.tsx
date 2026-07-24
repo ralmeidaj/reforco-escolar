@@ -138,7 +138,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div className="relative px-4 pb-2 pt-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_DATA_URI} alt="ReforçoPro" className="w-full" />
+          <img src={LOGO_DATA_URI} alt="ReforçoPro" className="w-1/2" />
           <button onClick={() => setSidebarOpen(false)} className="absolute right-2 top-2 rounded-lg p-1 text-white/60 hover:bg-white/10 lg:hidden">
             <CloseIcon />
           </button>
@@ -172,7 +172,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Content */}
       <div className="flex min-w-0 flex-1 flex-col lg:ml-64">
         {/* Top bar */}
-        <header className="sticky top-0 z-40 flex h-16 items-center gap-3 bg-white px-4 shadow-sm">
+        <header className="sticky top-0 z-40 flex h-20 items-center gap-3 bg-white px-4 shadow-sm">
           <button
             onClick={() => setSidebarOpen(true)}
             className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 lg:hidden"
