@@ -191,7 +191,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 {me ? initials(me.name) : '?'}
               </div>
               <div className="hidden min-w-0 sm:block">
-                <p className="max-w-[220px] truncate text-sm font-semibold leading-tight text-gray-900">{me?.name ?? 'Usuário'}</p>
+                <p className="max-w-[320px] truncate text-sm font-semibold leading-tight text-gray-900">{me?.name ?? 'Usuário'}</p>
                 {badge && (
                   <span className="mt-0.5 inline-block rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-700">
                     {badge.label}
