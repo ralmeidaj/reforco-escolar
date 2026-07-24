@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
 import { setTenantSlug } from '@/app/lib/api';
 import { LoadingOverlay } from '@/app/components/LoadingOverlay';
+import { Spinner } from '@/app/components/Spinner';
 import type { AuthResponse, UserRole } from '@/app/lib/types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
@@ -16,10 +17,8 @@ const ROLE_REDIRECTS: Record<UserRole, string> = {
   guardian: '/guardian',
 };
 
-export default function AcceptInvitePage() {
+function AcceptInviteForm() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-
   const token = searchParams.get('token') ?? '';
   const slug = searchParams.get('slug') ?? '';
 
@@ -114,5 +113,13 @@ export default function AcceptInvitePage() {
         </button>
       </form>
     </>
+  );
+}
+
+export default function AcceptInvitePage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center p-8"><Spinner size="lg" className="text-brand-600" /></div>}>
+      <AcceptInviteForm />
+    </Suspense>
   );
 }
