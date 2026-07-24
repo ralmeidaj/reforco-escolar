@@ -138,7 +138,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div className="relative px-4 py-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_DATA_URI} alt="ReforçoPro" className="w-1/2" />
+          <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-14 w-auto" />
           <button onClick={() => setSidebarOpen(false)} className="absolute right-2 top-2 rounded-lg p-1 text-white/60 hover:bg-white/10 lg:hidden">
             <CloseIcon />
           </button>
