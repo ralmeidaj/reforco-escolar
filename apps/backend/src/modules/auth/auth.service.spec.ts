@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { User } from './user.entity';
 import { RefreshToken } from './refresh-token.entity';
+import { Invite } from './invite.entity';
 import { REDIS_CLIENT } from '../../common/redis/redis.module';
 
 const mockUsersRepo = {
@@ -24,6 +25,12 @@ const mockRefreshTokensRepo = {
   create: jest.fn((dto) => dto),
   save: jest.fn(),
   update: jest.fn(),
+};
+
+const mockInviteRepo = {
+  findOne: jest.fn(),
+  create: jest.fn((dto) => dto),
+  save: jest.fn(),
 };
 
 const mockJwtService = { sign: jest.fn().mockReturnValue('mock.jwt.token') };
@@ -50,6 +57,7 @@ describe('AuthService', () => {
         AuthService,
         { provide: getRepositoryToken(User), useValue: mockUsersRepo },
         { provide: getRepositoryToken(RefreshToken), useValue: mockRefreshTokensRepo },
+        { provide: getRepositoryToken(Invite), useValue: mockInviteRepo },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: REDIS_CLIENT, useValue: mockRedis },
