@@ -1,3 +1,5 @@
+import { LOGO_DATA_URI } from '@/app/lib/logo';
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
@@ -12,7 +14,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="relative z-10 flex flex-col items-center px-12 text-center">
           <div className="rounded-2xl bg-white p-6 shadow-2xl">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="ReforçoPro" className="h-auto w-56 object-contain" />
+            <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-auto w-56 object-contain" />
           </div>
 
           <p className="mt-8 text-sm leading-relaxed text-white/75">
@@ -32,7 +34,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="flex w-full flex-col items-center justify-center bg-gray-50 px-6 py-12 lg:w-[440px] lg:flex-none lg:px-12">
         <div className="mb-8 flex justify-center lg:hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="ReforçoPro" className="h-auto w-40 object-contain" />
+          <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-auto w-40 object-contain" />
         </div>
 
         <div className="w-full max-w-sm">
