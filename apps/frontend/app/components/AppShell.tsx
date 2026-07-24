@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -137,7 +138,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {/* Logo + badge */}
         <div className="flex h-16 items-center justify-between px-5">
           <div className="flex items-center gap-2">
-            <span className="text-base font-bold text-white">Reforços</span>
+            <div className="flex items-center rounded-lg bg-white px-2 py-1">
+              <Image src="/logo.png" alt="ReforçoPro" width={100} height={28} className="h-7 w-auto object-contain" />
+            </div>
             {badge && (
               <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', badge.className)}>
                 {badge.label}

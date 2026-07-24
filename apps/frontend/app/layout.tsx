@@ -5,8 +5,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'Reforços Escolares',
-  description: 'Plataforma de gestão de aulas de reforço',
+  title: 'ReforçoPro — Gestão de Reforço Escolar',
+  description: 'Plataforma de gestão de aulas de reforço escolar',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
