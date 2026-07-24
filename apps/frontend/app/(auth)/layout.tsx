@@ -12,9 +12,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         {/* Ilustração educação */}
         <div className="relative z-10 flex flex-col items-center px-12 text-center">
-          <div className="rounded-2xl bg-white p-6 shadow-2xl">
+          <div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-auto w-56 object-contain" />
+            <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-auto w-56 object-contain mix-blend-multiply" />
           </div>
 
           <p className="mt-8 text-sm leading-relaxed text-white/75">
