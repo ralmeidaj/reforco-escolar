@@ -24,6 +24,8 @@ import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SendInviteDto } from './dto/send-invite.dto';
+import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 
@@ -128,6 +130,30 @@ export class AuthController {
   @ApiResponse({ status: 409, description: 'E-mail já está em uso' })
   async updateProfile(@Req() req: any, @Body() body: { name?: string; email?: string; currentPassword?: string; newPassword?: string }) {
     return this.authService.updateProfile(req.user.sub, body);
+  }
+
+  @ApiBearerAuth()
+  @Roles('tenant_admin')
+  @Post('invite')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Convidar usuário por e-mail' })
+  @ApiResponse({ status: 204, description: 'Convite enviado' })
+  @ApiResponse({ status: 409, description: 'Usuário já cadastrado' })
+  async sendInvite(@Req() req: any, @Body() dto: SendInviteDto) {
+    await this.authService.sendInvite(req.tenant.id, req.tenant.slug, req.user.sub, dto);
+  }
+
+  @Public()
+  @Post('invite/accept')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Aceitar convite e criar conta' })
+  @ApiResponse({ status: 201, description: 'Conta criada' })
+  @ApiResponse({ status: 400, description: 'Convite inválido ou expirado' })
+  async acceptInvite(@Res({ passthrough: true }) res: any, @Body() dto: AcceptInviteDto) {
+    const result = await this.authService.acceptInvite(dto);
+    this.setAccessCookie(res, result.accessToken);
+    return result;
   }
 
   @ApiBearerAuth()

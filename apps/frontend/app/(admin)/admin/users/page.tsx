@@ -22,6 +22,12 @@ const TAB_LABELS: Record<Tab, string> = {
   guardians: 'Responsáveis',
 };
 
+const TAB_INVITE_ROLE: Record<Tab, string> = {
+  teachers: 'teacher',
+  students: 'student',
+  guardians: 'guardian',
+};
+
 export default function UsersPage() {
   const [tab, setTab] = useState<Tab>('teachers');
   const [users, setUsers] = useState<User[]>([]);
@@ -32,6 +38,13 @@ export default function UsersPage() {
   const [linkModal, setLinkModal] = useState<{ teacher: User } | null>(null);
   const [selectedSubject, setSelectedSubject] = useState('');
   const [linking, setLinking] = useState(false);
+
+  // Modal de convite
+  const [inviteModal, setInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviting, setInviting] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState('');
+  const [inviteError, setInviteError] = useState('');
 
   useEffect(() => {
     setLoading(true);
@@ -61,11 +74,45 @@ export default function UsersPage() {
     }
   }
 
+  async function handleInvite(e: React.FormEvent) {
+    e.preventDefault();
+    setInviteError('');
+    setInviteSuccess('');
+    setInviting(true);
+    try {
+      await api.post('/auth/invite', { email: inviteEmail, role: TAB_INVITE_ROLE[tab] });
+      setInviteSuccess(`Convite enviado para ${inviteEmail}`);
+      setInviteEmail('');
+    } catch (err: any) {
+      const msg = Array.isArray(err.response?.data?.message)
+        ? err.response.data.message.join(', ')
+        : (err.response?.data?.message ?? 'Erro ao enviar convite');
+      setInviteError(msg);
+    } finally {
+      setInviting(false);
+    }
+  }
+
+  function closeInviteModal() {
+    setInviteModal(false);
+    setInviteEmail('');
+    setInviteError('');
+    setInviteSuccess('');
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
-        <p className="mt-1 text-sm text-gray-500">Professores, alunos e responsáveis</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
+          <p className="mt-1 text-sm text-gray-500">Professores, alunos e responsáveis</p>
+        </div>
+        <button
+          onClick={() => setInviteModal(true)}
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+        >
+          + Convidar
+        </button>
       </div>
 
       {/* Tabs */}
@@ -93,8 +140,10 @@ export default function UsersPage() {
           </div>
         ) : users.length === 0 ? (
           <div className="p-8 text-center">
-            <p className="text-sm text-gray-400">Nenhum {TAB_LABELS[tab].toLowerCase().slice(0,-1)} cadastrado ainda.</p>
-            <p className="mt-1 text-xs text-gray-400">Use os convites por e-mail para adicionar usuários.</p>
+            <p className="text-sm text-gray-400">Nenhum {TAB_LABELS[tab].toLowerCase().slice(0, -1)} cadastrado ainda.</p>
+            <p className="mt-1 text-xs text-gray-400">
+              Clique em &quot;+ Convidar&quot; para enviar um convite por e-mail.
+            </p>
           </div>
         ) : (
           <ul className="divide-y divide-gray-100">
@@ -117,6 +166,72 @@ export default function UsersPage() {
           </ul>
         )}
       </div>
+
+      {/* Modal de convite */}
+      {inviteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-base font-semibold text-gray-900">Convidar usuário</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              O papel será: <strong>{TAB_LABELS[tab].slice(0, -1)}</strong>
+            </p>
+
+            {inviteSuccess ? (
+              <div className="mt-4 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+                {inviteSuccess}
+              </div>
+            ) : (
+              <form onSubmit={handleInvite} className="mt-4 space-y-3">
+                {inviteError && (
+                  <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{inviteError}</div>
+                )}
+                <input
+                  type="email"
+                  required
+                  disabled={inviting}
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="email@exemplo.com"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-gray-50 disabled:opacity-60"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={closeInviteModal}
+                    className="rounded-lg px-4 py-2 text-sm text-gray-500 hover:bg-gray-100"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={inviting}
+                    className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {inviting ? <><Spinner size="sm" className="text-white" /> Enviando...</> : 'Enviar convite'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {inviteSuccess && (
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={() => setInviteSuccess('')}
+                  className="rounded-lg px-4 py-2 text-sm text-brand-600 hover:bg-brand-50"
+                >
+                  Enviar outro
+                </button>
+                <button
+                  onClick={closeInviteModal}
+                  className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+                >
+                  Fechar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal de vínculo */}
       {linkModal && (

@@ -14,10 +14,13 @@ import * as crypto from 'crypto';
 import { Resend } from 'resend';
 import { User, UserRole } from './user.entity';
 import { RefreshToken } from './refresh-token.entity';
+import { Invite } from './invite.entity';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SendInviteDto } from './dto/send-invite.dto';
+import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { REDIS_CLIENT } from '../../common/redis/redis.module';
 import type Redis from 'ioredis';
 
@@ -30,6 +33,8 @@ export class AuthService {
     private usersRepo: Repository<User>,
     @InjectRepository(RefreshToken)
     private refreshTokensRepo: Repository<RefreshToken>,
+    @InjectRepository(Invite)
+    private invitesRepo: Repository<Invite>,
     private jwtService: JwtService,
     private config: ConfigService,
     @Inject(REDIS_CLIENT) private redis: Redis,
@@ -120,6 +125,64 @@ export class AuthService {
     await this.usersRepo.save(user);
     await this.redis.del(redisKey);
     await this.refreshTokensRepo.update({ userId, revoked: false }, { revoked: true });
+  }
+
+  async sendInvite(tenantId: string, tenantSlug: string, invitedById: string, dto: SendInviteDto) {
+    const exists = await this.usersRepo.findOne({ where: { tenantId, email: dto.email } });
+    if (exists) throw new ConflictException('Usuário já cadastrado com esse e-mail');
+
+    const plainToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(plainToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await this.invitesRepo.delete({ tenantId, email: dto.email, status: 'pending' });
+
+    await this.invitesRepo.save(
+      this.invitesRepo.create({ tenantId, email: dto.email, role: dto.role, token: tokenHash, invitedById, expiresAt, status: 'pending' }),
+    );
+
+    const frontendUrl = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:3001';
+    const acceptUrl = `${frontendUrl}/accept-invite?token=${plainToken}&slug=${tenantSlug}`;
+    const roleLabel: Record<string, string> = { teacher: 'Professor', student: 'Aluno', guardian: 'Responsável' };
+
+    if (this.resend) {
+      await this.resend.emails.send({
+        from: 'noreply@orbytecno.com.br',
+        to: dto.email,
+        subject: `Convite para ${roleLabel[dto.role] ?? dto.role} — Reforços Escolares`,
+        html: `<p>Você foi convidado para o Reforços Escolares como <strong>${roleLabel[dto.role] ?? dto.role}</strong>.</p><p>Clique no link abaixo para criar sua conta (válido por 7 dias):</p><p><a href="${acceptUrl}">${acceptUrl}</a></p>`,
+      });
+    } else {
+      console.log(`[INVITE] link: ${acceptUrl}`);
+    }
+  }
+
+  async acceptInvite(dto: AcceptInviteDto) {
+    const tokenHash = crypto.createHash('sha256').update(dto.token).digest('hex');
+    const invite = await this.invitesRepo.findOne({ where: { token: tokenHash, status: 'pending' } });
+
+    if (!invite || invite.expiresAt < new Date()) {
+      throw new BadRequestException('Convite inválido ou expirado');
+    }
+
+    const exists = await this.usersRepo.findOne({ where: { tenantId: invite.tenantId, email: invite.email } });
+    if (exists) throw new ConflictException('Usuário já cadastrado com esse e-mail');
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const user = this.usersRepo.create({
+      tenantId: invite.tenantId,
+      email: invite.email,
+      name: dto.name,
+      role: invite.role as UserRole,
+      passwordHash,
+      emailVerified: true,
+    });
+    await this.usersRepo.save(user);
+
+    invite.status = 'accepted';
+    await this.invitesRepo.save(invite);
+
+    return this.generateTokens(user);
   }
 
   listUsers(tenantId: string, role?: string) {
