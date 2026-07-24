@@ -139,7 +139,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex h-16 items-center justify-between px-5">
           <div className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-8 w-auto object-contain mix-blend-multiply" />
+            <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-8 w-auto object-contain" />
             {badge && (
               <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', badge.className)}>
                 {badge.label}
