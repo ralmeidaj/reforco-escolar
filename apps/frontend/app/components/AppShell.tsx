@@ -135,20 +135,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       )}>
         <div className="pointer-events-none absolute inset-x-0 top-0 h-32 rounded-bl-full bg-white/5" />
 
-        {/* Logo + badge */}
-        <div className="flex flex-col px-4 pb-2 pt-3">
-          <div className="flex items-start justify-between">
+        {/* Logo */}
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex h-16 w-40 items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-14 w-auto object-contain" />
-            <button onClick={() => setSidebarOpen(false)} className="mt-1 rounded-lg p-1 text-white/60 hover:bg-white/10 lg:hidden">
-              <CloseIcon />
-            </button>
+            <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-full w-full object-contain" />
           </div>
-          {badge && (
-            <span className={cn('mt-1 w-fit rounded-full px-2 py-0.5 text-xs font-medium', badge.className)}>
-              {badge.label}
-            </span>
-          )}
+          <button onClick={() => setSidebarOpen(false)} className="rounded-lg p-1 text-white/60 hover:bg-white/10 lg:hidden">
+            <CloseIcon />
+          </button>
         </div>
 
         {/* Nav */}
@@ -172,43 +167,48 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-
-        {/* User info */}
-        <div className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-semibold text-white">
-              {me ? initials(me.name) : '?'}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-white">{me?.name ?? 'Usuário'}</p>
-              <p className="truncate text-xs text-white/60">{me?.email ?? ''}</p>
-            </div>
-            <button
-              onClick={logout}
-              disabled={loggingOut}
-              title="Sair"
-              className="shrink-0 rounded-lg p-1.5 text-white hover:bg-white/20 disabled:opacity-60"
-            >
-              {loggingOut ? <Spinner size="sm" className="text-white" /> : <LogoutIcon />}
-            </button>
-          </div>
-        </div>
       </aside>
 
       {/* Content */}
       <div className="flex min-w-0 flex-1 flex-col lg:ml-64">
         {/* Top bar */}
-        <header className="sticky top-0 z-40 flex h-14 items-center bg-white px-4 shadow-sm">
+        <header className="sticky top-0 z-40 flex h-14 items-center gap-3 bg-white px-4 shadow-sm">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="mr-3 rounded-lg p-2 text-gray-600 hover:bg-gray-100 lg:hidden"
+            className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 lg:hidden"
             aria-label="Abrir menu"
           >
             <MenuIcon />
           </button>
-          <span className="flex-1 text-sm font-bold text-brand-600 lg:hidden">Reforços Escolares</span>
-          <div className="ml-auto">
+          <span className="text-sm font-bold text-brand-600 lg:hidden">ReforçoPro</span>
+
+          <div className="ml-auto flex items-center gap-3">
             <NotificationBell />
+
+            {/* Perfil */}
+            <div className="flex items-center gap-2 border-l border-gray-100 pl-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
+                {me ? initials(me.name) : '?'}
+              </div>
+              <div className="hidden sm:block">
+                <p className="text-sm font-medium leading-tight text-gray-900">{me?.name ?? 'Usuário'}</p>
+                <div className="flex items-center gap-1">
+                  {badge && (
+                    <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-medium', badge.className.replace('text-white', 'text-brand-700').replace('bg-white/20', 'bg-brand-100').replace('bg-red-500/20', 'bg-red-100').replace('text-red-200', 'text-red-700'))}>
+                      {badge.label}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={logout}
+                disabled={loggingOut}
+                title="Sair"
+                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-60"
+              >
+                {loggingOut ? <Spinner size="sm" className="text-gray-400" /> : <LogoutIcon />}
+              </button>
+            </div>
           </div>
         </header>
 
