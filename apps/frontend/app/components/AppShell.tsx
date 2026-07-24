@@ -136,12 +136,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="pointer-events-none absolute inset-x-0 top-0 h-32 rounded-bl-full bg-white/5" />
 
         {/* Logo */}
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex h-16 w-40 items-center">
+        <div className="flex items-center justify-between px-3 py-2">
+          <div className="flex h-20 flex-1 items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-full w-full object-contain" />
+            <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-full w-full object-contain object-left" />
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="rounded-lg p-1 text-white/60 hover:bg-white/10 lg:hidden">
+          <button onClick={() => setSidebarOpen(false)} className="ml-1 shrink-0 rounded-lg p-1 text-white/60 hover:bg-white/10 lg:hidden">
             <CloseIcon />
           </button>
         </div>
@@ -149,7 +149,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {/* Nav */}
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const isRootItem = !item.href.includes('/', 1);
+            const isActive = pathname === item.href ||
+              (!isRootItem && pathname.startsWith(`${item.href}/`));
             return (
               <button
                 key={item.href}
@@ -190,15 +192,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
                 {me ? initials(me.name) : '?'}
               </div>
-              <div className="hidden sm:block">
-                <p className="text-sm font-medium leading-tight text-gray-900">{me?.name ?? 'Usuário'}</p>
-                <div className="flex items-center gap-1">
-                  {badge && (
-                    <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-medium', badge.className.replace('text-white', 'text-brand-700').replace('bg-white/20', 'bg-brand-100').replace('bg-red-500/20', 'bg-red-100').replace('text-red-200', 'text-red-700'))}>
-                      {badge.label}
-                    </span>
-                  )}
-                </div>
+              <div className="hidden max-w-[160px] sm:block">
+                <p className="truncate text-sm font-medium leading-tight text-gray-900">{me?.name ?? 'Usuário'}</p>
+                {badge && (
+                  <span className="mt-0.5 inline-block rounded-full bg-brand-100 px-1.5 py-0.5 text-[10px] font-medium text-brand-700">
+                    {badge.label}
+                  </span>
+                )}
               </div>
               <button
                 onClick={logout}
