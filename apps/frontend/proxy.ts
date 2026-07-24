@@ -11,6 +11,7 @@ const PUBLIC_PATHS = [
   '/register',
   '/forgot-password',
   '/reset-password',
+  '/accept-invite',
   '/super-admin',
   '/api/auth',
 ];
