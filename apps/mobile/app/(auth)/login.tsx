@@ -64,7 +64,7 @@ export default function LoginScreen() {
         saveUser(data.user),
       ]);
       registerPushToken(data.accessToken, slug.trim());
-      router.replace(ROLE_ROUTES[data.user.role as UserRole] ?? '/(auth)/login');
+      router.replace((ROLE_ROUTES[data.user.role as UserRole] ?? '/(auth)/login') as any);
     } catch (err: any) {
       setError(err.response?.data?.message ?? 'E-mail ou senha incorretos');
     } finally {

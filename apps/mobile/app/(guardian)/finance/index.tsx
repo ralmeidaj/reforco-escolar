@@ -24,10 +24,17 @@ export default function GuardianFinance() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      api.get('/finance/balance').then((r) => setPlans(r.data.studentPlans ?? [])),
-      api.get('/finance/payments').then((r) => setPayments(r.data)),
-    ]).finally(() => setLoading(false));
+    api.get<{ id: string }[]>('/guardian/students')
+      .then(({ data }) => {
+        if (!data.length) return;
+        const studentId = data[0].id;
+        return Promise.all([
+          api.get(`/student-plans/student/${studentId}`).then((r) => setPlans(r.data)),
+          api.get(`/payments/student/${studentId}`).then((r) => setPayments(r.data)),
+        ]);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   return (
@@ -105,7 +112,6 @@ const s = StyleSheet.create({
   lowAlert: { fontSize: 12, color: colors.danger, marginTop: 6, fontWeight: '600' },
   payValue: { fontSize: 16, fontWeight: '700', color: colors.text },
   payDate: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  success: colors.success,
 });
 const prog = StyleSheet.create({
   bar: { height: 6, backgroundColor: '#E5E7EB', borderRadius: 3, marginBottom: 6, overflow: 'hidden' },

@@ -20,17 +20,20 @@ export default function TeacherNotes() {
 
   async function openSession(sess: Session) {
     setSelected(sess);
-    const res = await api.get(`/sessions/${sess.id}/notes`);
-    setNotes(res.data);
+    try {
+      const res = await api.get(`/session-notes/${sess.id}`);
+      setNotes(res.data);
+      if (res.data.length > 0) setContent(res.data[0].content);
+    } catch {}
   }
 
   async function save() {
     if (!content.trim() || !selected) return;
     setSaving(true);
     try {
-      const res = await api.post(`/sessions/${selected.id}/notes`, { content: content.trim() });
-      setNotes((prev) => [res.data, ...prev]);
-      setContent('');
+      const res = await api.post('/session-notes', { sessionId: selected.id, content: content.trim() });
+      setNotes([res.data]);
+      setContent(res.data.content);
     } catch {
       Alert.alert('Erro', 'Não foi possível salvar a nota');
     }

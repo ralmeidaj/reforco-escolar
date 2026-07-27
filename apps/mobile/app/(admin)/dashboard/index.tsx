@@ -12,8 +12,6 @@ interface KPIs {
   lowBalanceStudents: number;
 }
 
-interface AbsenceAlert { id: string; studentName: string; guardianName: string; sessionDate: string; }
-
 function KPICard({ icon, label, value, color }: { icon: string; label: string; value: string | number; color?: string }) {
   return (
     <Card style={kpi.card}>
@@ -26,17 +24,13 @@ function KPICard({ icon, label, value, color }: { icon: string; label: string; v
 
 export default function AdminDashboard() {
   const [data, setData] = useState<KPIs | null>(null);
-  const [absences, setAbsences] = useState<AbsenceAlert[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(() => {
-    Promise.all([
-      api.get('/reports/admin/kpis'),
-      api.get('/attendance/absences/today'),
-    ]).then(([kpisRes, absRes]) => {
-      setData(kpisRes.data);
-      setAbsences(absRes.data);
-    }).finally(() => setLoading(false));
+    api.get('/reports/admin/kpis')
+      .then(({ data }) => setData(data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -69,20 +63,6 @@ export default function AdminDashboard() {
                 <KPICard icon="⚠️" label="Saldo baixo" value={data.lowBalanceStudents} color={data.lowBalanceStudents > 0 ? colors.warning : undefined} />
               </View>
 
-              {absences.length > 0 && (
-                <>
-                  <Text style={s.section}>Faltas de hoje</Text>
-                  {absences.map((a) => (
-                    <Card key={a.id} style={{ marginBottom: 8 }}>
-                      <Text style={s.absenceName}>{a.studentName}</Text>
-                      <Text style={s.absenceGuardian}>Responsável: {a.guardianName}</Text>
-                      <Text style={s.absenceTime}>
-                        {new Date(a.sessionDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                      </Text>
-                    </Card>
-                  ))}
-                </>
-              )}
             </>
         }
       </ScrollView>
@@ -99,9 +79,6 @@ const s = StyleSheet.create({
   content: { padding: 16, paddingBottom: 40 },
   section: { fontSize: 12, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginTop: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
-  absenceName: { fontSize: 15, fontWeight: '700', color: colors.text },
-  absenceGuardian: { fontSize: 12, color: colors.muted, marginTop: 2 },
-  absenceTime: { fontSize: 12, color: colors.muted, marginTop: 2 },
 });
 const kpi = StyleSheet.create({
   card: { flex: 1, minWidth: '45%', alignItems: 'center', paddingVertical: 14 },

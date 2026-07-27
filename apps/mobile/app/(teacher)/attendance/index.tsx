@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Ale
 import { api } from '../../../lib/api';
 import { Card, SkeletonCard, EmptyState, colors } from '../../../components/ui';
 
-interface Session { id: string; scheduledAt: string; subject?: { name: string }; status: string; }
+interface Session { id: string; scheduledAt: string; subject?: { name: string }; status: string; student?: Student; }
 interface Student { id: string; name: string; }
 interface AttendanceRecord { studentId: string; status: string; }
 
@@ -24,21 +24,24 @@ export default function TeacherAttendance() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.get('/sessions?status=confirmada&limit=10').then((r) => setSessions(r.data)).finally(() => setLoading(false));
+    api.get('/sessions').then((r) => {
+      const confirmed = r.data.filter((s: Session) => s.status === 'confirmada' || s.status === 'agendada');
+      setSessions(confirmed.slice(0, 20));
+    }).finally(() => setLoading(false));
   }, []);
 
   async function openSession(session: Session) {
     setSelected(session);
-    const [studRes, attRes] = await Promise.all([
-      api.get(`/sessions/${session.id}/students`),
-      api.get(`/attendance?sessionId=${session.id}`),
-    ]);
-    setStudents(studRes.data);
-    const map: Record<string, AttStatus> = {};
-    for (const a of attRes.data as AttendanceRecord[]) {
-      map[a.studentId] = a.status as AttStatus;
-    }
-    setAttendance(map);
+    // cada sessão tem exatamente 1 aluno (relação 1:1)
+    if (session.student) setStudents([session.student]);
+    try {
+      const attRes = await api.get(`/attendances/session/${session.id}`);
+      const map: Record<string, AttStatus> = {};
+      for (const a of attRes.data as AttendanceRecord[]) {
+        map[a.studentId] = a.status as AttStatus;
+      }
+      setAttendance(map);
+    } catch {}
   }
 
   function toggle(studentId: string) {

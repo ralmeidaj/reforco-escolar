@@ -37,7 +37,11 @@ export default function StudentProgress() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/progress/me').then((r) => setProgress(r.data)).finally(() => setLoading(false));
+    api.get('/auth/me')
+      .then(({ data }) => api.get(`/progress/student/${data.id}`))
+      .then((r) => setProgress(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   return (

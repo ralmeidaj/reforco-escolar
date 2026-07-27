@@ -48,7 +48,7 @@ export default function ActivityUpload() {
       form.append('file', { uri: image.uri, type: image.type, name: image.name } as any);
       if (taskId.trim()) form.append('taskId', taskId.trim());
 
-      await api.post('/attendance/activity-submissions', form, {
+      await api.post('/activity-submissions', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setDone(true);

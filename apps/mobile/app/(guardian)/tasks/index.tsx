@@ -12,7 +12,13 @@ export default function GuardianTasks() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/tasks/student/me').then((r) => setTasks(r.data)).finally(() => setLoading(false));
+    api.get<{ id: string }[]>('/guardian/students')
+      .then(({ data }) => {
+        if (!data.length) return;
+        return api.get(`/tasks/student/${data[0].id}`).then((r) => setTasks(r.data));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const pending = tasks.filter((t) => !t.done);

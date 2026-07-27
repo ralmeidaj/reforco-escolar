@@ -24,12 +24,18 @@ export default function TeacherTasks() {
 
   useEffect(() => {
     Promise.all([
-      api.get('/tasks?limit=50'),
-      api.get('/users?role=student&limit=100'),
-    ]).then(([tasksRes, studRes]) => {
+      api.get('/tasks/teacher'),
+      api.get('/sessions').then(({ data }) => {
+        const map = new Map<string, Student>();
+        for (const s of data) {
+          if (s.student && !map.has(s.student.id)) map.set(s.student.id, s.student);
+        }
+        return Array.from(map.values());
+      }),
+    ]).then(([tasksRes, studs]) => {
       setTasks(tasksRes.data);
-      setStudents(studRes.data);
-    }).finally(() => setLoading(false));
+      setStudents(studs);
+    }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   async function create() {

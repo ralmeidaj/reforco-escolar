@@ -19,7 +19,7 @@ export default function Index() {
       if (!token || !user) {
         router.replace('/(auth)/login');
       } else {
-        router.replace(ROLE_ROUTES[user.role] ?? '/(auth)/login');
+        router.replace((ROLE_ROUTES[user.role] ?? '/(auth)/login') as any);
       }
     }
     check();

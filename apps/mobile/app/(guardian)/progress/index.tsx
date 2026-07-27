@@ -17,7 +17,13 @@ export default function GuardianProgress() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/progress/student/me').then((r) => setProgress(r.data)).finally(() => setLoading(false));
+    api.get<{ id: string }[]>('/guardian/students')
+      .then(({ data }) => {
+        if (!data.length) return;
+        return api.get(`/progress/student/${data[0].id}`).then((r) => setProgress(r.data));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   return (

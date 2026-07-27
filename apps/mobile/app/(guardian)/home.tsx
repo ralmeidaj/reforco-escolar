@@ -22,7 +22,13 @@ export default function GuardianHome() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/reports/guardian/me').then((r) => setReport(r.data)).finally(() => setLoading(false));
+    api.get<{ id: string }[]>('/guardian/students')
+      .then(({ data }) => {
+        if (!data.length) return;
+        return api.get(`/reports/guardian/student/${data[0].id}`).then((r) => setReport(r.data));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   return (

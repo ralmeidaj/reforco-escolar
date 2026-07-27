@@ -22,14 +22,19 @@ export default function GuardianAttendance() {
   const [stats, setStats] = useState({ total: 0, present: 0, absent: 0, rate: 0 });
 
   useEffect(() => {
-    api.get('/attendance/student/me').then((r) => {
-      const data: Attendance[] = r.data;
-      setRecords(data);
-      const total = data.length;
-      const present = data.filter((a) => a.status === 'presente').length;
-      const absent = data.filter((a) => a.status === 'ausente').length;
-      setStats({ total, present, absent, rate: total ? Math.round((present / total) * 100) : 0 });
-    }).finally(() => setLoading(false));
+    api.get<{ id: string }[]>('/guardian/students')
+      .then(({ data }) => {
+        if (!data.length) return;
+        return api.get<Attendance[]>(`/attendances/student/${data[0].id}`).then(({ data: records }) => {
+          setRecords(records);
+          const total = records.length;
+          const present = records.filter((a) => a.status === 'presente').length;
+          const absent = records.filter((a) => a.status === 'ausente').length;
+          setStats({ total, present, absent, rate: total ? Math.round((present / total) * 100) : 0 });
+        });
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   return (
