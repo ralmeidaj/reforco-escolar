@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { ILike, IsNull, Repository } from 'typeorm';
 import { Room } from './room.entity';
 import { RoomCheckin } from './room-checkin.entity';
+import { User } from '../auth/user.entity';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 
@@ -13,6 +14,8 @@ export class RoomsService {
     private roomsRepo: Repository<Room>,
     @InjectRepository(RoomCheckin)
     private checkinsRepo: Repository<RoomCheckin>,
+    @InjectRepository(User)
+    private usersRepo: Repository<User>,
   ) {}
 
   findAll(tenantId: string) {
@@ -139,6 +142,16 @@ export class RoomsService {
       { tenantId, studentId, checkoutAt: IsNull() },
       { checkoutAt: new Date() },
     );
+  }
+
+  async kioskSearchStudents(tenantId: string, q: string) {
+    if (!q || q.length < 2) return [];
+    return this.usersRepo.find({
+      where: { tenantId, role: 'student', name: ILike(`%${q}%`) },
+      select: ['id', 'name'],
+      take: 10,
+      order: { name: 'ASC' },
+    });
   }
 
   async getMyCheckin(tenantId: string, studentId: string) {

@@ -14,6 +14,7 @@ const PUBLIC_PATHS = [
   '/accept-invite',
   '/super-admin',
   '/api/auth',
+  '/kiosk',
 ];
 
 export async function proxy(request: NextRequest) {
