@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Room } from './room.entity';
+import { RoomCheckin } from './room-checkin.entity';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 
@@ -10,6 +11,8 @@ export class RoomsService {
   constructor(
     @InjectRepository(Room)
     private roomsRepo: Repository<Room>,
+    @InjectRepository(RoomCheckin)
+    private checkinsRepo: Repository<RoomCheckin>,
   ) {}
 
   findAll(tenantId: string) {
@@ -72,5 +75,77 @@ export class RoomsService {
       ...room,
       currentOccupancy: countByRoom[room.id] ?? 0,
     }));
+  }
+
+  // ── Check-in de aluno ────────────────────────────────────────────────────────
+
+  async getAvailableRooms(tenantId: string) {
+    const rooms = await this.roomsRepo.find({ where: { tenantId }, order: { name: 'ASC' } });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const rows: Array<{ roomId: string; count: string }> = await this.checkinsRepo
+      .createQueryBuilder('c')
+      .select('c.room_id', 'roomId')
+      .addSelect('COUNT(c.id)', 'count')
+      .where('c.tenant_id = :tenantId', { tenantId })
+      .andWhere('c.checkout_at IS NULL')
+      .andWhere('c.checkin_at >= :today', { today })
+      .groupBy('c.room_id')
+      .getRawMany();
+
+    const occupancy = Object.fromEntries(rows.map((r) => [r.roomId, Number(r.count)]));
+
+    return rooms.map((room) => {
+      const current = occupancy[room.id] ?? 0;
+      return {
+        id: room.id,
+        name: room.name,
+        capacity: room.capacity,
+        currentOccupancy: current,
+        available: room.capacity - current,
+        isFull: current >= room.capacity,
+      };
+    });
+  }
+
+  async checkin(tenantId: string, studentId: string, roomId: string) {
+    const room = await this.findOne(tenantId, roomId);
+
+    // auto-checkout de sala anterior se existir
+    await this.checkinsRepo.update(
+      { tenantId, studentId, checkoutAt: IsNull() },
+      { checkoutAt: new Date() },
+    );
+
+    // verifica capacidade
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const count = await this.checkinsRepo.count({
+      where: { tenantId, roomId, checkoutAt: IsNull() },
+    });
+    if (count >= room.capacity) {
+      throw new BadRequestException('Sala sem vagas disponíveis');
+    }
+
+    const checkin = this.checkinsRepo.create({ tenantId, roomId, studentId });
+    const saved = await this.checkinsRepo.save(checkin);
+    return { ...saved, room: { id: room.id, name: room.name, capacity: room.capacity } };
+  }
+
+  async checkout(tenantId: string, studentId: string) {
+    await this.checkinsRepo.update(
+      { tenantId, studentId, checkoutAt: IsNull() },
+      { checkoutAt: new Date() },
+    );
+  }
+
+  async getMyCheckin(tenantId: string, studentId: string) {
+    const checkin = await this.checkinsRepo.findOne({
+      where: { tenantId, studentId, checkoutAt: IsNull() },
+      relations: { room: true },
+    });
+    return checkin ?? null;
   }
 }

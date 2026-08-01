@@ -1,7 +1,8 @@
 import {
-  View, Text, TouchableOpacity, ActivityIndicator,
+  View, Text, TouchableOpacity, ActivityIndicator, Animated,
   StyleSheet, type ViewStyle, type TextStyle,
 } from 'react-native';
+import { useEffect, useRef } from 'react';
 
 // ── Cores ─────────────────────────────────────────────────────────────────────
 export const colors = {
@@ -29,6 +30,7 @@ const BADGE_COLORS: Record<string, { bg: string; text: string }> = {
   warning: { bg: '#FEF3C7', text: '#B45309' },
   muted:   { bg: '#F3F4F6', text: '#6B7280' },
   primary: { bg: '#DBEAFE', text: '#1D4ED8' },
+  default: { bg: '#F3F4F6', text: '#6B7280' },
 };
 
 export function Badge({ label, variant = 'muted' }: { label: string; variant?: string }) {
@@ -82,7 +84,17 @@ export function EmptyState({ icon, message }: { icon?: string; message: string }
 
 // ── SkeletonCard ──────────────────────────────────────────────────────────────
 export function SkeletonCard({ height = 72 }: { height?: number }) {
-  return <View style={[s.skeleton, { height }]} />;
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration: 700, useNativeDriver: true }),
+      ]),
+    ).start();
+  }, [anim]);
+  const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.7] });
+  return <Animated.View style={[s.skeleton, { height, opacity }]} />;
 }
 
 // ── SectionHeader ─────────────────────────────────────────────────────────────

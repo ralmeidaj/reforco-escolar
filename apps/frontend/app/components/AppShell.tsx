@@ -36,6 +36,7 @@ const teacherNav = [
 
 const studentNav = [
   { href: '/student',            label: 'Dashboard' },
+  { href: '/student/rooms',      label: 'Salas' },
   { href: '/student/tasks',      label: 'Tarefas' },
   { href: '/student/study-log',  label: 'Diário de estudo' },
   { href: '/student/activity',   label: 'Atividades' },

@@ -312,6 +312,8 @@ export class SuperAdminController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logs de auditoria de um tenant específico' })
   @ApiParam({ name: 'tenantId', type: 'string' })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'offset', required: false })
   @ApiResponse({ status: 200, description: 'Lista de logs do tenant' })
   getAuditLogsByTenant(
     @Param('tenantId') tenantId: string,

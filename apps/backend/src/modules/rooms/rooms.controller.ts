@@ -7,6 +7,8 @@ import {
   Body,
   Param,
   Req,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -36,11 +38,40 @@ export class RoomsController {
 
   @Get('occupancy')
   @Roles('tenant_admin', 'teacher')
-  @ApiOperation({ summary: 'Ocupação atual das salas (janela ±1h)' })
+  @ApiOperation({ summary: 'Ocupação atual das salas (janela ±1h via sessões)' })
   @ApiResponse({ status: 200 })
   getOccupancy(@Req() req: any) {
     return this.roomsService.getOccupancy(req.tenant.id);
   }
+
+  // ── Rotas de check-in de aluno (rotas estáticas antes de :id) ───────────────
+
+  @Get('available')
+  @Roles('student')
+  @ApiOperation({ summary: 'Salas disponíveis com vagas para o aluno (hoje)' })
+  @ApiResponse({ status: 200 })
+  getAvailable(@Req() req: any) {
+    return this.roomsService.getAvailableRooms(req.tenant.id);
+  }
+
+  @Get('my-checkin')
+  @Roles('student')
+  @ApiOperation({ summary: 'Check-in ativo do aluno (null se não estiver em nenhuma sala)' })
+  @ApiResponse({ status: 200 })
+  getMyCheckin(@Req() req: any) {
+    return this.roomsService.getMyCheckin(req.tenant.id, req.user.sub);
+  }
+
+  @Delete('my-checkin')
+  @Roles('student')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Aluno sai da sala atual (checkout)' })
+  @ApiResponse({ status: 204 })
+  checkout(@Req() req: any) {
+    return this.roomsService.checkout(req.tenant.id, req.user.sub);
+  }
+
+  // ── Rotas genéricas ──────────────────────────────────────────────────────────
 
   @Get(':id')
   @Roles('tenant_admin', 'teacher')
@@ -58,6 +89,17 @@ export class RoomsController {
   @ApiResponse({ status: 201 })
   create(@Req() req: any, @Body() dto: CreateRoomDto) {
     return this.roomsService.create(req.tenant.id, dto);
+  }
+
+  @Post(':id/checkin')
+  @Roles('student')
+  @ApiOperation({ summary: 'Aluno entra em uma sala (check-in)' })
+  @ApiParam({ name: 'id', type: 'string', description: 'ID da sala' })
+  @ApiResponse({ status: 201, description: 'Check-in registrado' })
+  @ApiResponse({ status: 400, description: 'Sala sem vagas' })
+  @ApiResponse({ status: 404, description: 'Sala não encontrada' })
+  checkin(@Req() req: any, @Param('id') id: string) {
+    return this.roomsService.checkin(req.tenant.id, req.user.sub, id);
   }
 
   @Patch(':id')

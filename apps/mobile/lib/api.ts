@@ -13,6 +13,11 @@ api.interceptors.request.use(async (config) => {
 });
 
 let refreshing: Promise<string> | null = null;
+let _onSessionExpired: (() => void) | null = null;
+
+export function setSessionExpiredHandler(fn: () => void) {
+  _onSessionExpired = fn;
+}
 
 api.interceptors.response.use(
   (res) => res,
@@ -27,10 +32,7 @@ api.interceptors.response.use(
       refreshing = (async () => {
         const refreshToken = await getRefreshToken();
         const slug = await getTenantSlug();
-        if (!refreshToken) {
-          await clearAuth();
-          throw new Error('Session expired');
-        }
+        if (!refreshToken) throw new Error('no_refresh_token');
         const { data } = await axios.post(
           `${BASE_URL}/auth/refresh/mobile`,
           { refreshToken },
@@ -38,7 +40,11 @@ api.interceptors.response.use(
         );
         await saveTokens(data.accessToken, data.refreshToken);
         return data.accessToken as string;
-      })().finally(() => {
+      })().catch(async (err) => {
+        await clearAuth();
+        _onSessionExpired?.();
+        throw err;
+      }).finally(() => {
         refreshing = null;
       });
     }
