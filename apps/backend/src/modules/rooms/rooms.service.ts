@@ -148,7 +148,7 @@ export class RoomsService {
     if (!q || q.length < 2) return [];
     return this.usersRepo.find({
       where: { tenantId, role: 'student', name: ILike(`%${q}%`) },
-      select: ['id', 'name'],
+      select: { id: true, name: true },
       take: 10,
       order: { name: 'ASC' },
     });
