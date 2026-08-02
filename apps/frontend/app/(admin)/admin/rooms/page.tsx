@@ -79,10 +79,13 @@ export default function RoomsPage() {
           <p className="mt-1 text-sm text-gray-500">Configure professor e disciplina por sala</p>
         </div>
         <button
-          onClick={() => {
-            const parts = window.location.hostname.split('.');
-            const slug = parts.length >= 3 ? parts[0] : '';
-            window.open(`/kiosk${slug ? `?tenant=${slug}` : ''}`, '_blank');
+          onClick={async () => {
+            try {
+              const { data } = await api.get<{ slug: string }>('/tenants/me');
+              window.open(`/kiosk?tenant=${data.slug}`, '_blank');
+            } catch {
+              window.open('/kiosk', '_blank');
+            }
           }}
           className="shrink-0 flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
         >

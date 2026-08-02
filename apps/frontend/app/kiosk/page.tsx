@@ -20,12 +20,17 @@ interface Student {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
-function getTenantSlug() {
+const KIOSK_SLUG_KEY = 'kiosk_tenant_slug';
+
+function getTenantSlug(): string {
   if (typeof window === 'undefined') return '';
-  // query param tem prioridade: /kiosk?tenant=minha-escola
+  // 1. query param: /kiosk?tenant=minha-escola
   const param = new URLSearchParams(window.location.search).get('tenant');
-  if (param) return param;
-  // subdomínio: escola.app.com → 'escola'
+  if (param) { localStorage.setItem(KIOSK_SLUG_KEY, param); return param; }
+  // 2. localStorage (digitado em sessão anterior)
+  const stored = localStorage.getItem(KIOSK_SLUG_KEY);
+  if (stored) return stored;
+  // 3. subdomínio: escola.app.com → 'escola'
   const parts = window.location.hostname.split('.');
   return parts.length >= 3 ? parts[0] : '';
 }
@@ -162,9 +167,11 @@ export default function KioskPage() {
           <p className="text-blue-200 mb-8 text-sm">Digite o identificador da sua escola para continuar</p>
           <form onSubmit={(e) => {
             e.preventDefault();
-            if (!tenantInput.trim()) return;
+            const slug = tenantInput.trim();
+            if (!slug) return;
+            localStorage.setItem(KIOSK_SLUG_KEY, slug);
             const url = new URL(window.location.href);
-            url.searchParams.set('tenant', tenantInput.trim());
+            url.searchParams.set('tenant', slug);
             window.location.href = url.toString();
           }} className="space-y-4">
             <input

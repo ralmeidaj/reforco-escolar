@@ -22,4 +22,8 @@ export class TenantsService {
   findBySlug(slug: string): Promise<Tenant | null> {
     return this.tenantsRepo.findOne({ where: { slug, status: 'active' } });
   }
+
+  findById(id: string): Promise<Tenant | null> {
+    return this.tenantsRepo.findOne({ where: { id } });
+  }
 }
