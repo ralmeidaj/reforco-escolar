@@ -78,17 +78,19 @@ export default function RoomsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Salas</h1>
           <p className="mt-1 text-sm text-gray-500">Configure professor e disciplina por sala</p>
         </div>
-        <a
-          href="/kiosk"
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={() => {
+            const parts = window.location.hostname.split('.');
+            const slug = parts.length >= 3 ? parts[0] : '';
+            window.open(`/kiosk${slug ? `?tenant=${slug}` : ''}`, '_blank');
+          }}
           className="shrink-0 flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
           Abrir Kiosk
-        </a>
+        </button>
       </div>
 
       <div className="rounded-2xl bg-white p-5 shadow-sm">
