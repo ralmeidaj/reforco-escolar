@@ -35,12 +35,12 @@ export class Session {
   @JoinColumn({ name: 'teacher_id' })
   teacher: User;
 
-  @Column({ name: 'student_id' })
-  studentId: string;
+  @Column({ name: 'student_id', nullable: true, type: 'uuid' })
+  studentId: string | null;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'student_id' })
-  student: User;
+  student: User | null;
 
   @Column({ name: 'subject_id' })
   subjectId: string;

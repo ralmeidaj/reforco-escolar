@@ -14,9 +14,10 @@ export class CreateSessionDto {
   @IsUUID()
   teacherId: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsUUID()
-  studentId: string;
+  studentId?: string;
 
   @ApiProperty()
   @IsUUID()

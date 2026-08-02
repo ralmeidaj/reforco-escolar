@@ -17,7 +17,7 @@ interface Session {
   meetLink?: string;
   cancelReason?: string;
   teacher: User;
-  student: User;
+  student?: User | null;
   subject: Subject;
   room?: Room | null;
 }
@@ -121,6 +121,7 @@ export default function SchedulePage() {
     try {
       await api.post('/sessions', {
         ...form,
+        studentId: form.studentId || undefined,
         roomId: form.roomId || undefined,
         meetLink: form.meetLink || undefined,
       });
@@ -225,7 +226,7 @@ export default function SchedulePage() {
                           STATUS_COLORS[s.status],
                         )}
                       >
-                        <div className="font-medium truncate">{s.student.name.split(' ')[0]}</div>
+                        <div className="font-medium truncate">{s.student ? s.student.name.split(' ')[0] : 'A definir'}</div>
                         <div className="truncate opacity-70">{s.subject.name}</div>
                         <div className="opacity-60">{new Date(s.scheduledAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
                       </button>
@@ -248,8 +249,8 @@ export default function SchedulePage() {
                 <option value="">Professor...</option>
                 {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
-              <select required value={form.studentId} onChange={(e) => setForm(p => ({ ...p, studentId: e.target.value }))} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
-                <option value="">Aluno...</option>
+              <select value={form.studentId} onChange={(e) => setForm(p => ({ ...p, studentId: e.target.value }))} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                <option value="">Aluno (opcional — walk-in)</option>
                 {students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
               <select required value={form.subjectId} onChange={(e) => setForm(p => ({ ...p, subjectId: e.target.value }))} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
@@ -290,7 +291,7 @@ export default function SchedulePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
             <h3 className="mb-1 text-base font-semibold text-gray-900">
-              {statusModal.student.name} — {statusModal.subject.name}
+              {statusModal.student?.name ?? 'A definir'} — {statusModal.subject.name}
             </h3>
             <p className="mb-4 text-xs text-gray-400">
               {new Date(statusModal.scheduledAt).toLocaleString('pt-BR')} · {statusModal.teacher.name}
