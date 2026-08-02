@@ -9,6 +9,8 @@ interface RoomOccupancy {
   capacity: number;
   currentCount: number;
   students: { id: string; name: string }[];
+  teacher?: { id: string; name: string } | null;
+  subject?: { id: string; name: string } | null;
 }
 
 export function RoomScreen() {
@@ -55,7 +57,14 @@ export function RoomScreen() {
                 return (
                   <Card key={room.id} style={{ marginBottom: 12 }}>
                     <View style={s.roomHeader}>
-                      <Text style={s.roomName}>{room.name}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.roomName}>{room.name}</Text>
+                        {(room.subject || room.teacher) && (
+                          <Text style={s.roomMeta}>
+                            {room.subject?.name}{room.subject && room.teacher ? ' · ' : ''}{room.teacher ? `Prof. ${room.teacher.name}` : ''}
+                          </Text>
+                        )}
+                      </View>
                       <Text style={[s.count, { color }]}>{room.currentCount}/{room.capacity}</Text>
                     </View>
                     <View style={s.barBg}>
@@ -89,6 +98,7 @@ const s = StyleSheet.create({
   content: { padding: 16, paddingBottom: 40 },
   roomHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   roomName: { fontSize: 16, fontWeight: '700', color: colors.text },
+  roomMeta: { fontSize: 12, color: colors.primary, marginTop: 2 },
   count: { fontSize: 18, fontWeight: '800' },
   barBg: { height: 8, backgroundColor: '#E5E7EB', borderRadius: 4, overflow: 'hidden' },
   barFill: { height: 8, borderRadius: 4 },
