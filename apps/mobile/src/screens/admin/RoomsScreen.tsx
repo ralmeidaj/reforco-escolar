@@ -8,29 +8,42 @@ interface Room {
   name: string;
   capacity: number;
   currentCount?: number;
+  teacher?: { id: string; name: string } | null;
+  subject?: { id: string; name: string } | null;
 }
+interface Teacher { id: string; name: string }
+interface Subject { id: string; name: string }
 
 export function RoomsScreen() {
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [capacity, setCapacity] = useState('');
+  const [teacherIdx, setTeacherIdx] = useState(-1);
+  const [subjectIdx, setSubjectIdx] = useState(-1);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(() => {
-    Promise.all([
-      api.get('/rooms'),
-      api.get('/rooms/occupancy').catch(() => ({ data: [] })),
-    ]).then(([roomsRes, occRes]) => {
+  const load = useCallback(async () => {
+    try {
+      const [roomsRes, occRes, teachersRes, subjectsRes] = await Promise.all([
+        api.get('/rooms'),
+        api.get('/rooms/occupancy').catch(() => ({ data: [] })),
+        api.get('/auth/users?role=teacher'),
+        api.get('/subjects'),
+      ]);
       const occMap: Record<string, number> = {};
       for (const o of occRes.data as Room[]) occMap[o.id] = o.currentCount ?? 0;
       setRooms(roomsRes.data.map((r: Room) => ({ ...r, currentCount: occMap[r.id] ?? 0 })));
-    }).finally(() => setLoading(false));
+      setTeachers(teachersRes.data);
+      setSubjects(subjectsRes.data);
+    } catch {}
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
@@ -38,9 +51,12 @@ export function RoomsScreen() {
     if (!name.trim() || !capacity) { Alert.alert('Preencha nome e capacidade'); return; }
     setSaving(true);
     try {
-      const res = await api.post('/rooms', { name: name.trim(), capacity: Number(capacity) });
+      const payload: any = { name: name.trim(), capacity: Number(capacity) };
+      if (teacherIdx >= 0) payload.teacherId = teachers[teacherIdx].id;
+      if (subjectIdx >= 0) payload.subjectId = subjects[subjectIdx].id;
+      const res = await api.post('/rooms', payload);
       setRooms((prev) => [...prev, { ...res.data, currentCount: 0 }]);
-      setCreating(false); setName(''); setCapacity('');
+      setCreating(false); setName(''); setCapacity(''); setTeacherIdx(-1); setSubjectIdx(-1);
     } catch { Alert.alert('Erro', 'Não foi possível criar a sala'); }
     setSaving(false);
   }
@@ -80,6 +96,35 @@ export function RoomsScreen() {
             <TextInput style={s.input} value={name} onChangeText={setName} placeholder="Ex: Sala A" />
             <Text style={s.label}>Capacidade</Text>
             <TextInput style={s.input} value={capacity} onChangeText={setCapacity} placeholder="Ex: 6" keyboardType="number-pad" />
+
+            <Text style={s.label}>Professor (opcional)</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+              <View style={s.chips}>
+                <TouchableOpacity onPress={() => setTeacherIdx(-1)} style={[s.chip, teacherIdx === -1 && s.chipActive]}>
+                  <Text style={[s.chipText, teacherIdx === -1 && s.chipActiveText]}>Nenhum</Text>
+                </TouchableOpacity>
+                {teachers.map((t, i) => (
+                  <TouchableOpacity key={t.id} onPress={() => setTeacherIdx(i)} style={[s.chip, teacherIdx === i && s.chipActive]}>
+                    <Text style={[s.chipText, teacherIdx === i && s.chipActiveText]}>{t.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
+            <Text style={s.label}>Disciplina (opcional)</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+              <View style={s.chips}>
+                <TouchableOpacity onPress={() => setSubjectIdx(-1)} style={[s.chip, subjectIdx === -1 && s.chipActive]}>
+                  <Text style={[s.chipText, subjectIdx === -1 && s.chipActiveText]}>Nenhuma</Text>
+                </TouchableOpacity>
+                {subjects.map((sub, i) => (
+                  <TouchableOpacity key={sub.id} onPress={() => setSubjectIdx(i)} style={[s.chip, subjectIdx === i && s.chipActive]}>
+                    <Text style={[s.chipText, subjectIdx === i && s.chipActiveText]}>{sub.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+
             <Button label={saving ? 'Criando...' : 'Criar sala'} onPress={create} loading={saving} style={{ marginTop: 12 }} />
           </Card>
         )}
@@ -98,6 +143,11 @@ export function RoomsScreen() {
                     <View style={s.roomRow}>
                       <View style={{ flex: 1 }}>
                         <Text style={s.roomName}>{room.name}</Text>
+                        {(room.teacher || room.subject) && (
+                          <Text style={s.roomMeta}>
+                            {room.subject?.name}{room.subject && room.teacher ? ' · ' : ''}{room.teacher ? `Prof. ${room.teacher.name}` : ''}
+                          </Text>
+                        )}
                         <Text style={s.roomCap}>Capacidade: {cap}</Text>
                       </View>
                       <View style={{ alignItems: 'flex-end', gap: 6 }}>
@@ -130,8 +180,14 @@ const s = StyleSheet.create({
   formTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 10 },
   label: { fontSize: 12, color: colors.muted, fontWeight: '600', marginBottom: 4, marginTop: 8 },
   input: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 10, fontSize: 14, color: colors.text },
+  chips: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
+  chip: { borderRadius: 20, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#F9FAFB' },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 13, color: colors.text },
+  chipActiveText: { color: '#fff', fontWeight: '600' },
   roomRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   roomName: { fontSize: 16, fontWeight: '700', color: colors.text },
+  roomMeta: { fontSize: 12, color: colors.primary, marginTop: 2 },
   roomCap: { fontSize: 12, color: colors.muted, marginTop: 2 },
   occ: { fontSize: 18, fontWeight: '800' },
   del: { fontSize: 16 },
