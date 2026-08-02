@@ -46,6 +46,12 @@ export default function UsersPage() {
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [inviteError, setInviteError] = useState('');
 
+  // Modal de cadastro direto
+  const [registerModal, setRegisterModal] = useState(false);
+  const [registerForm, setRegisterForm] = useState({ name: '', email: '', password: '' });
+  const [registering, setRegistering] = useState(false);
+  const [registerError, setRegisterError] = useState('');
+
   useEffect(() => {
     setLoading(true);
     Promise.all([
@@ -100,6 +106,26 @@ export default function UsersPage() {
     setInviteSuccess('');
   }
 
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    setRegisterError('');
+    setRegistering(true);
+    try {
+      await api.post('/auth/users', { ...registerForm, role: TAB_INVITE_ROLE[tab] });
+      setRegisterModal(false);
+      setRegisterForm({ name: '', email: '', password: '' });
+      setLoading(true);
+      api.get<User[]>(`/auth/users?role=${TAB_ROLES[tab]}`).then(({ data }) => setUsers(data)).finally(() => setLoading(false));
+    } catch (err: any) {
+      const msg = Array.isArray(err.response?.data?.message)
+        ? err.response.data.message.join(', ')
+        : (err.response?.data?.message ?? 'Erro ao cadastrar');
+      setRegisterError(msg);
+    } finally {
+      setRegistering(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -107,12 +133,20 @@ export default function UsersPage() {
           <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
           <p className="mt-1 text-sm text-gray-500">Professores, alunos e responsáveis</p>
         </div>
-        <button
-          onClick={() => setInviteModal(true)}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-        >
-          + Convidar
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setRegisterModal(true); setRegisterError(''); }}
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            + Cadastrar
+          </button>
+          <button
+            onClick={() => setInviteModal(true)}
+            className="rounded-lg border border-brand-300 px-4 py-2 text-sm font-medium text-brand-600 hover:bg-brand-50"
+          >
+            Convidar por e-mail
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -166,6 +200,68 @@ export default function UsersPage() {
           </ul>
         )}
       </div>
+
+      {/* Modal de cadastro direto */}
+      {registerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-base font-semibold text-gray-900">
+              Cadastrar {TAB_LABELS[tab].slice(0, -1)}
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              O acesso é criado imediatamente, sem precisar de convite.
+            </p>
+            <form onSubmit={handleRegister} className="mt-4 space-y-3">
+              {registerError && (
+                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{registerError}</div>
+              )}
+              <input
+                required
+                disabled={registering}
+                value={registerForm.name}
+                onChange={(e) => setRegisterForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder="Nome completo"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+              />
+              <input
+                type="email"
+                required
+                disabled={registering}
+                value={registerForm.email}
+                onChange={(e) => setRegisterForm((p) => ({ ...p, email: e.target.value }))}
+                placeholder="E-mail"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+              />
+              <input
+                type="password"
+                required
+                minLength={6}
+                disabled={registering}
+                value={registerForm.password}
+                onChange={(e) => setRegisterForm((p) => ({ ...p, password: e.target.value }))}
+                placeholder="Senha provisória (mín. 6 caracteres)"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+              />
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setRegisterModal(false); setRegisterForm({ name: '', email: '', password: '' }); }}
+                  className="rounded-lg px-4 py-2 text-sm text-gray-500 hover:bg-gray-100"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={registering}
+                  className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {registering ? <><Spinner size="sm" className="text-white" /> Cadastrando...</> : 'Cadastrar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Modal de convite */}
       {inviteModal && (

@@ -26,6 +26,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SendInviteDto } from './dto/send-invite.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
+import { CreateUserDirectDto } from './dto/create-user-direct.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 
@@ -154,6 +155,16 @@ export class AuthController {
     const result = await this.authService.acceptInvite(dto);
     this.setAccessCookie(res, result.accessToken);
     return result;
+  }
+
+  @ApiBearerAuth()
+  @Roles('tenant_admin')
+  @Post('users')
+  @ApiOperation({ summary: 'Cadastrar usuário diretamente (sem convite)' })
+  @ApiResponse({ status: 201, description: 'Usuário criado' })
+  @ApiResponse({ status: 409, description: 'E-mail já cadastrado' })
+  createUserDirect(@Req() req: any, @Body() dto: CreateUserDirectDto) {
+    return this.authService.createUserDirect(req.tenant.id, dto);
   }
 
   @ApiBearerAuth()

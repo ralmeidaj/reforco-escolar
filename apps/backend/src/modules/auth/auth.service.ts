@@ -21,6 +21,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SendInviteDto } from './dto/send-invite.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
+import { CreateUserDirectDto } from './dto/create-user-direct.dto';
 import { REDIS_CLIENT } from '../../common/redis/redis.module';
 import type Redis from 'ioredis';
 
@@ -41,6 +42,23 @@ export class AuthService {
   ) {
     const key = config.get<string>('RESEND_API_KEY');
     this.resend = key ? new Resend(key) : null;
+  }
+
+  async createUserDirect(tenantId: string, dto: CreateUserDirectDto) {
+    const exists = await this.usersRepo.findOne({ where: { tenantId, email: dto.email } });
+    if (exists) throw new ConflictException('E-mail já cadastrado nesta escola');
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const user = this.usersRepo.create({
+      tenantId,
+      name: dto.name,
+      email: dto.email,
+      role: dto.role as UserRole,
+      passwordHash,
+      emailVerified: true,
+    });
+    const saved = await this.usersRepo.save(user);
+    return { id: saved.id, name: saved.name, email: saved.email, role: saved.role };
   }
 
   async signup(tenantId: string, dto: SignupDto) {
