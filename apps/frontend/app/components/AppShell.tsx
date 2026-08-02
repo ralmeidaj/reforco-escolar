@@ -10,6 +10,7 @@ import { Spinner } from '@/app/components/Spinner';
 import { NotificationBell } from '@/app/components/NotificationBell';
 
 interface Me { name: string; email: string; role: string }
+interface NavItem { href: string; label: string; external?: boolean }
 
 const adminNav = [
   { href: '/admin',              label: 'Dashboard' },
@@ -18,6 +19,7 @@ const adminNav = [
   { href: '/admin/groups',       label: 'Turmas' },
   { href: '/admin/schedule',     label: 'Agendamento' },
   { href: '/admin/rooms',        label: 'Salas' },
+  { href: '/kiosk',              label: 'Kiosk', external: true },
   { href: '/admin/attendance',   label: 'Presenças' },
   { href: '/admin/finance',      label: 'Financeiro' },
   { href: '/admin/reports',      label: 'Relatórios' },
@@ -54,7 +56,7 @@ const guardianNav = [
   { href: '/guardian/ai',          label: 'Panorama' },
 ];
 
-const navByRole: Record<string, { href: string; label: string }[]> = {
+const navByRole: Record<string, NavItem[]> = {
   tenant_admin: adminNav,
   teacher: teacherNav,
   student: studentNav,
@@ -149,8 +151,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2">
           {navItems.map((item) => {
             const isRootItem = !item.href.includes('/', 1);
-            const isActive = pathname === item.href ||
-              (!isRootItem && pathname.startsWith(`${item.href}/`));
+            const isActive = !item.external && (pathname === item.href ||
+              (!isRootItem && pathname.startsWith(`${item.href}/`)));
+            if (item.external) {
+              return (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-all duration-150"
+                >
+                  {item.label}
+                  <svg className="ml-auto h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              );
+            }
             return (
               <button
                 key={item.href}
