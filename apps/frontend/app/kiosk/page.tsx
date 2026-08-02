@@ -22,9 +22,12 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 function getTenantSlug() {
   if (typeof window === 'undefined') return '';
-  const host = window.location.hostname;
-  const parts = host.split('.');
-  return parts.length >= 3 ? parts[0] : host.split('.')[0];
+  // query param tem prioridade: /kiosk?tenant=minha-escola
+  const param = new URLSearchParams(window.location.search).get('tenant');
+  if (param) return param;
+  // subdomínio: escola.app.com → 'escola'
+  const parts = window.location.hostname.split('.');
+  return parts.length >= 3 ? parts[0] : '';
 }
 
 async function kioskFetch<T>(path: string, opts?: RequestInit): Promise<T> {
@@ -52,12 +55,15 @@ function OccupancyBar({ pct, isFull }: { pct: number; isFull: boolean }) {
   );
 }
 
-type Step = 'rooms' | 'search' | 'confirm' | 'success' | 'error';
+type Step = 'setup' | 'rooms' | 'search' | 'confirm' | 'success' | 'error';
 
 export default function KioskPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<Step>('rooms');
+  const [step, setStep] = useState<Step>(() =>
+    getTenantSlug() ? 'rooms' : 'setup'
+  );
+  const [tenantInput, setTenantInput] = useState('');
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [query, setQuery] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
@@ -71,6 +77,7 @@ export default function KioskPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const loadRooms = useCallback(async () => {
+    if (!getTenantSlug()) return;
     try {
       const data = await kioskFetch<Room[]>('/kiosk/rooms');
       setRooms(data);
@@ -145,6 +152,41 @@ export default function KioskPage() {
   }
 
   const pct = (r: Room) => r.capacity ? Math.min(100, Math.round((r.currentOccupancy / r.capacity) * 100)) : 0;
+
+  if (step === 'setup') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-sky-700 text-white flex items-center justify-center p-6">
+        <div className="w-full max-w-sm text-center">
+          <div className="text-6xl mb-6">🏫</div>
+          <h1 className="text-3xl font-black mb-2">Kiosk</h1>
+          <p className="text-blue-200 mb-8 text-sm">Digite o identificador da sua escola para continuar</p>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (!tenantInput.trim()) return;
+            const url = new URL(window.location.href);
+            url.searchParams.set('tenant', tenantInput.trim());
+            window.location.href = url.toString();
+          }} className="space-y-4">
+            <input
+              autoFocus
+              type="text"
+              value={tenantInput}
+              onChange={(e) => setTenantInput(e.target.value)}
+              placeholder="Ex: escola-silva"
+              className="w-full rounded-2xl bg-white/10 border border-white/20 px-5 py-4 text-white text-lg placeholder-white/30 outline-none focus:border-blue-300"
+            />
+            <button
+              type="submit"
+              disabled={!tenantInput.trim()}
+              className="w-full rounded-2xl bg-blue-500 py-4 text-base font-bold hover:bg-blue-400 disabled:opacity-40"
+            >
+              Entrar
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-sky-700 text-white">
