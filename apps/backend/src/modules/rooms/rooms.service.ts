@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, IsNull, Repository } from 'typeorm';
+import { Between, ILike, IsNull, Repository } from 'typeorm';
 import { Room } from './room.entity';
 import { RoomCheckin } from './room-checkin.entity';
 import { User } from '../auth/user.entity';
@@ -160,26 +160,58 @@ export class RoomsService {
   }
 
   private async createWalkInSession(tenantId: string, studentId: string, room: Room) {
-    const session = this.sessionsRepo.create({
-      tenantId,
-      teacherId: room.teacherId!,
-      studentId,
-      subjectId: room.subjectId!,
-      roomId: room.id,
-      scheduledAt: new Date(),
-      status: 'agendada' as any,
-      channel: 'presencial',
-    });
-    const savedSession = await this.sessionsRepo.save(session);
+    const now = new Date();
+    // janela: 90 min antes até 30 min depois do horário atual
+    const windowStart = new Date(now.getTime() - 90 * 60 * 1000);
+    const windowEnd   = new Date(now.getTime() + 30 * 60 * 1000);
 
-    await this.attendancesRepo.save(
-      this.attendancesRepo.create({
+    // procura sessão agendada sem aluno para este professor+disciplina no horário
+    const pending = await this.sessionsRepo.findOne({
+      where: {
         tenantId,
-        sessionId: savedSession.id,
+        teacherId: room.teacherId!,
+        subjectId: room.subjectId!,
+        studentId: IsNull(),
+        status: 'agendada' as any,
+        scheduledAt: Between(windowStart, windowEnd),
+      },
+      order: { scheduledAt: 'ASC' },
+    });
+
+    let sessionId: string;
+
+    if (pending) {
+      // preenche o aluno na sessão pré-agendada
+      pending.studentId = studentId;
+      pending.roomId = room.id;
+      pending.status = 'confirmada' as any;
+      const updated = await this.sessionsRepo.save(pending);
+      sessionId = updated.id;
+    } else {
+      // cria sessão walk-in nova
+      const session = this.sessionsRepo.create({
+        tenantId,
+        teacherId: room.teacherId!,
         studentId,
-        status: 'presente',
-      }),
-    );
+        subjectId: room.subjectId!,
+        roomId: room.id,
+        scheduledAt: now,
+        status: 'agendada' as any,
+        channel: 'presencial',
+      });
+      const saved = await this.sessionsRepo.save(session);
+      sessionId = saved.id;
+    }
+
+    // verifica se já existe presença para esta sessão+aluno antes de criar
+    const existing = await this.attendancesRepo.findOne({
+      where: { tenantId, sessionId, studentId },
+    });
+    if (!existing) {
+      await this.attendancesRepo.save(
+        this.attendancesRepo.create({ tenantId, sessionId, studentId, status: 'presente' }),
+      );
+    }
   }
 
   async checkout(tenantId: string, studentId: string) {
