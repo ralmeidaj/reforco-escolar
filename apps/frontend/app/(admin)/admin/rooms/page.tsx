@@ -11,13 +11,19 @@ interface Room {
   capacity: number;
   currentOccupancy?: number;
   fixedGroup?: { id: string; name: string } | null;
+  teacher?: { id: string; name: string } | null;
+  subject?: { id: string; name: string } | null;
 }
+interface Teacher { id: string; name: string }
+interface Subject { id: string; name: string }
 
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: '', capacity: 10 });
+  const [form, setForm] = useState({ name: '', capacity: 10, teacherId: '', subjectId: '' });
   const [error, setError] = useState('');
 
   function loadRooms() {
@@ -25,9 +31,12 @@ export default function RoomsPage() {
   }
 
   useEffect(() => {
-    loadRooms().finally(() => setLoading(false));
+    Promise.all([
+      loadRooms(),
+      api.get<Teacher[]>('/auth/users?role=teacher').then(({ data }) => setTeachers(data)),
+      api.get<Subject[]>('/subjects').then(({ data }) => setSubjects(data)),
+    ]).finally(() => setLoading(false));
 
-    // Atualiza ocupação a cada 30s
     const interval = setInterval(loadRooms, 30_000);
     return () => clearInterval(interval);
   }, []);
@@ -37,9 +46,12 @@ export default function RoomsPage() {
     setError('');
     setSaving(true);
     try {
-      await api.post('/rooms', form);
+      const payload: any = { name: form.name, capacity: form.capacity };
+      if (form.teacherId) payload.teacherId = form.teacherId;
+      if (form.subjectId) payload.subjectId = form.subjectId;
+      await api.post('/rooms', payload);
       await loadRooms();
-      setForm({ name: '', capacity: 10 });
+      setForm({ name: '', capacity: 10, teacherId: '', subjectId: '' });
     } catch (err: any) {
       setError(err.response?.data?.message ?? 'Erro ao criar sala');
     } finally {
@@ -64,7 +76,7 @@ export default function RoomsPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Salas</h1>
-          <p className="mt-1 text-sm text-gray-500">Gerencie as salas e veja a ocupação em tempo real</p>
+          <p className="mt-1 text-sm text-gray-500">Configure professor e disciplina por sala</p>
         </div>
         <a
           href="/kiosk"
@@ -81,34 +93,52 @@ export default function RoomsPage() {
 
       <div className="rounded-2xl bg-white p-5 shadow-sm">
         <h2 className="mb-4 text-sm font-semibold text-gray-700">Nova sala</h2>
-        <form onSubmit={handleCreate} className="flex flex-wrap gap-3">
-          <input
-            required
-            disabled={saving}
-            value={form.name}
-            onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-            placeholder="Ex.: Sala 01"
-            className="flex-1 min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
-          />
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-500">Capacidade:</label>
+        <form onSubmit={handleCreate} className="space-y-3">
+          <div className="flex flex-wrap gap-3">
             <input
-              type="number"
-              min={1}
-              max={50}
+              required
               disabled={saving}
-              value={form.capacity}
-              onChange={(e) => setForm((p) => ({ ...p, capacity: Number(e.target.value) }))}
-              className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+              value={form.name}
+              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              placeholder="Ex.: Sala de Matemática"
+              className="flex-1 min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
             />
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-500 whitespace-nowrap">Capacidade:</label>
+              <input
+                type="number" min={1} max={50} disabled={saving}
+                value={form.capacity}
+                onChange={(e) => setForm((p) => ({ ...p, capacity: Number(e.target.value) }))}
+                className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+              />
+            </div>
           </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {saving ? <><Spinner size="sm" className="text-white" /> Salvando...</> : 'Adicionar'}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <select
+              disabled={saving}
+              value={form.teacherId}
+              onChange={(e) => setForm((p) => ({ ...p, teacherId: e.target.value }))}
+              className="flex-1 min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+            >
+              <option value="">Professor (opcional)</option>
+              {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+            <select
+              disabled={saving}
+              value={form.subjectId}
+              onChange={(e) => setForm((p) => ({ ...p, subjectId: e.target.value }))}
+              className="flex-1 min-w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+            >
+              <option value="">Disciplina (opcional)</option>
+              {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            <button
+              type="submit" disabled={saving}
+              className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {saving ? <><Spinner size="sm" className="text-white" /> Salvando...</> : 'Adicionar'}
+            </button>
+          </div>
         </form>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       </div>
@@ -127,15 +157,17 @@ export default function RoomsPage() {
             {rooms.map((r) => {
               const occ = r.currentOccupancy ?? 0;
               return (
-                <li key={r.id} className="flex items-center gap-4 px-5 py-3">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{r.name}</p>
-                    {r.fixedGroup && (
-                      <p className="text-xs text-gray-400">Turma fixa: {r.fixedGroup.name}</p>
-                    )}
+                <li key={r.id} className="flex items-center gap-4 px-5 py-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">{r.name}</p>
+                    <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                      {r.teacher && <p className="text-xs text-gray-500">👨‍🏫 {r.teacher.name}</p>}
+                      {r.subject && <p className="text-xs text-brand-600 font-medium">📚 {r.subject.name}</p>}
+                      {r.fixedGroup && <p className="text-xs text-gray-400">Turma: {r.fixedGroup.name}</p>}
+                      {!r.teacher && !r.subject && <p className="text-xs text-gray-300">Sem professor/disciplina configurado</p>}
+                    </div>
                   </div>
 
-                  {/* Barra de ocupação */}
                   <div className="flex w-32 flex-col gap-1">
                     <div className="flex justify-between text-xs text-gray-500">
                       <span>{occ} / {r.capacity}</span>
@@ -151,10 +183,7 @@ export default function RoomsPage() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => handleDelete(r.id)}
-                    className="text-xs text-red-500 hover:text-red-700"
-                  >
+                  <button onClick={() => handleDelete(r.id)} className="text-xs text-red-500 hover:text-red-700">
                     Remover
                   </button>
                 </li>

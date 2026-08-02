@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, ILike, IsNull, Repository } from 'typeorm';
+import { ILike, IsNull, Repository } from 'typeorm';
 import { Room } from './room.entity';
 import { RoomCheckin } from './room-checkin.entity';
 import { User } from '../auth/user.entity';
@@ -28,14 +28,14 @@ export class RoomsService {
     return this.roomsRepo.find({
       where: { tenantId },
       order: { name: 'ASC' },
-      relations: { fixedGroup: true },
+      relations: { fixedGroup: true, teacher: true, subject: true },
     });
   }
 
   async findOne(tenantId: string, id: string) {
     const room = await this.roomsRepo.findOne({
       where: { tenantId, id },
-      relations: { fixedGroup: true },
+      relations: { fixedGroup: true, teacher: true, subject: true },
     });
     if (!room) throw new NotFoundException('Sala não encontrada');
     return room;
@@ -58,7 +58,11 @@ export class RoomsService {
   }
 
   async getOccupancy(tenantId: string) {
-    const rooms = await this.roomsRepo.find({ where: { tenantId }, order: { name: 'ASC' } });
+    const rooms = await this.roomsRepo.find({
+      where: { tenantId },
+      order: { name: 'ASC' },
+      relations: { teacher: true, subject: true },
+    });
 
     const now = new Date();
     const windowStart = new Date(now.getTime() - 60 * 60 * 1000);
@@ -89,7 +93,11 @@ export class RoomsService {
   // ── Check-in de aluno ────────────────────────────────────────────────────────
 
   async getAvailableRooms(tenantId: string) {
-    const rooms = await this.roomsRepo.find({ where: { tenantId }, order: { name: 'ASC' } });
+    const rooms = await this.roomsRepo.find({
+      where: { tenantId },
+      order: { name: 'ASC' },
+      relations: { teacher: true, subject: true },
+    });
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -115,6 +123,8 @@ export class RoomsService {
         currentOccupancy: current,
         available: room.capacity - current,
         isFull: current >= room.capacity,
+        teacher: room.teacher ? { id: room.teacher.id, name: room.teacher.name } : null,
+        subject: room.subject ? { id: room.subject.id, name: room.subject.name } : null,
       };
     });
   }
@@ -141,45 +151,35 @@ export class RoomsService {
     const checkin = this.checkinsRepo.create({ tenantId, roomId, studentId });
     const saved = await this.checkinsRepo.save(checkin);
 
-    // registra presença automaticamente na sessão de hoje (silencioso)
-    this.autoRegisterAttendance(tenantId, studentId).catch(() => {});
+    // se a sala tem professor e disciplina configurados, cria sessão + presença
+    if (room.teacherId && room.subjectId) {
+      this.createWalkInSession(tenantId, studentId, room).catch(() => {});
+    }
 
     return { ...saved, room: { id: room.id, name: room.name, capacity: room.capacity } };
   }
 
-  private async autoRegisterAttendance(tenantId: string, studentId: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const session = await this.sessionsRepo
-      .createQueryBuilder('s')
-      .where('s.tenant_id = :tenantId', { tenantId })
-      .andWhere('s.student_id = :studentId', { studentId })
-      .andWhere("s.channel = 'presencial'")
-      .andWhere("s.status IN ('agendada', 'confirmada')")
-      .andWhere('s.scheduled_at >= :today', { today })
-      .andWhere('s.scheduled_at < :tomorrow', { tomorrow })
-      .orderBy('s.scheduled_at', 'ASC')
-      .getOne();
-
-    if (!session) return;
-
-    const existing = await this.attendancesRepo.findOne({
-      where: { tenantId, sessionId: session.id, studentId },
+  private async createWalkInSession(tenantId: string, studentId: string, room: Room) {
+    const session = this.sessionsRepo.create({
+      tenantId,
+      teacherId: room.teacherId!,
+      studentId,
+      subjectId: room.subjectId!,
+      roomId: room.id,
+      scheduledAt: new Date(),
+      status: 'agendada' as any,
+      channel: 'presencial',
     });
+    const savedSession = await this.sessionsRepo.save(session);
 
-    if (existing) {
-      if (existing.status !== 'presente') {
-        existing.status = 'presente';
-        await this.attendancesRepo.save(existing);
-      }
-    } else {
-      await this.attendancesRepo.save(
-        this.attendancesRepo.create({ tenantId, sessionId: session.id, studentId, status: 'presente' }),
-      );
-    }
+    await this.attendancesRepo.save(
+      this.attendancesRepo.create({
+        tenantId,
+        sessionId: savedSession.id,
+        studentId,
+        status: 'presente',
+      }),
+    );
   }
 
   async checkout(tenantId: string, studentId: string) {
@@ -205,5 +205,26 @@ export class RoomsService {
       relations: { room: true },
     });
     return checkin ?? null;
+  }
+
+  async getActiveCheckins(tenantId: string) {
+    const checkins = await this.checkinsRepo
+      .createQueryBuilder('c')
+      .leftJoinAndSelect('c.room', 'room')
+      .innerJoin('users', 'u', 'u.id = c.student_id AND u.tenant_id = c.tenant_id')
+      .addSelect(['u.id', 'u.name'])
+      .where('c.tenant_id = :tenantId', { tenantId })
+      .andWhere('c.checkout_at IS NULL')
+      .orderBy('c.checkin_at', 'ASC')
+      .getRawMany();
+
+    return checkins.map((row) => ({
+      checkinId: row.c_id,
+      checkinAt: row.c_checkin_at,
+      studentId: row.u_id,
+      studentName: row.u_name,
+      roomId: row.room_id,
+      roomName: row.room_name,
+    }));
   }
 }

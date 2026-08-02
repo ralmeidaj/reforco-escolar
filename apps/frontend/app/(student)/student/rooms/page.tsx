@@ -11,6 +11,8 @@ interface RoomAvailable {
   currentOccupancy: number;
   available: number;
   isFull: boolean;
+  teacher?: { id: string; name: string } | null;
+  subject?: { id: string; name: string } | null;
 }
 
 interface ActiveCheckin {
@@ -151,6 +153,13 @@ export default function StudentRoomsPage() {
                         </span>
                       )}
                     </div>
+                    {(room.teacher || room.subject) && (
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        {room.subject && <span className="font-medium text-brand-600">{room.subject.name}</span>}
+                        {room.subject && room.teacher && ' · '}
+                        {room.teacher && `Prof. ${room.teacher.name}`}
+                      </p>
+                    )}
                     <p className="mt-1 text-xs text-gray-500">
                       {room.currentOccupancy}/{room.capacity} alunos
                       {!room.isFull && (

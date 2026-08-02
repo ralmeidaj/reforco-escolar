@@ -9,6 +9,8 @@ import {
 } from 'typeorm';
 import { Tenant } from '../tenants/tenant.entity';
 import { Group } from '../groups/group.entity';
+import { User } from '../auth/user.entity';
+import { Subject } from '../subjects/subject.entity';
 
 @Entity('rooms')
 export class Room {
@@ -34,6 +36,20 @@ export class Room {
   @ManyToOne(() => Group, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'fixed_group_id' })
   fixedGroup: Group | null;
+
+  @Column({ name: 'teacher_id', nullable: true, type: 'uuid' })
+  teacherId: string | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'teacher_id' })
+  teacher: User | null;
+
+  @Column({ name: 'subject_id', nullable: true, type: 'uuid' })
+  subjectId: string | null;
+
+  @ManyToOne(() => Subject, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'subject_id' })
+  subject: Subject | null;
 
   @CreateDateColumn()
   createdAt: Date;

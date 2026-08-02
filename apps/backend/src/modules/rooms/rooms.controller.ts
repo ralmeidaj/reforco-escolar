@@ -46,6 +46,14 @@ export class RoomsController {
 
   // ── Rotas de check-in de aluno (rotas estáticas antes de :id) ───────────────
 
+  @Get('checkins/active')
+  @Roles('teacher', 'tenant_admin')
+  @ApiOperation({ summary: 'Alunos atualmente presentes nas salas (check-in ativo)' })
+  @ApiResponse({ status: 200 })
+  getActiveCheckins(@Req() req: any) {
+    return this.roomsService.getActiveCheckins(req.tenant.id);
+  }
+
   @Get('available')
   @Roles('student')
   @ApiOperation({ summary: 'Salas disponíveis com vagas para o aluno (hoje)' })

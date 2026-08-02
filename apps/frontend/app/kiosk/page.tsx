@@ -9,6 +9,8 @@ interface Room {
   currentOccupancy: number;
   available: number;
   isFull: boolean;
+  teacher?: { id: string; name: string } | null;
+  subject?: { id: string; name: string } | null;
 }
 
 interface Student {
@@ -187,6 +189,11 @@ export default function KioskPage() {
                   <span className="absolute top-4 right-4 rounded-full bg-red-500/80 px-3 py-1 text-xs font-bold">LOTADA</span>
                 )}
                 <h2 className="text-2xl font-bold">{room.name}</h2>
+                {(room.subject || room.teacher) && (
+                  <p className="mt-1 text-sm text-blue-200">
+                    {room.subject?.name}{room.subject && room.teacher ? ' · ' : ''}{room.teacher ? `Prof. ${room.teacher.name}` : ''}
+                  </p>
+                )}
                 <div className="mt-2 flex items-baseline gap-1">
                   <span className={`text-5xl font-black ${room.isFull ? 'text-red-400' : 'text-white'}`}>
                     {room.available}

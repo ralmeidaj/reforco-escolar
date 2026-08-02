@@ -10,6 +10,8 @@ interface RoomAvailable {
   currentOccupancy: number;
   available: number;
   isFull: boolean;
+  teacher?: { id: string; name: string } | null;
+  subject?: { id: string; name: string } | null;
 }
 
 interface ActiveCheckin {
@@ -148,7 +150,14 @@ export function RoomCheckinScreen() {
                 return (
                   <Card key={room.id} style={[s.roomCard, isMyRoom && s.myRoom]}>
                     <View style={s.roomTop}>
-                      <Text style={s.roomName}>{room.name}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.roomName}>{room.name}</Text>
+                        {(room.subject || room.teacher) && (
+                          <Text style={s.roomMeta}>
+                            {room.subject?.name}{room.subject && room.teacher ? ' · ' : ''}{room.teacher ? `Prof. ${room.teacher.name}` : ''}
+                          </Text>
+                        )}
+                      </View>
                       <Text style={[s.spots, { color: room.isFull ? colors.danger : colors.success }]}>
                         {room.isFull ? 'Lotada' : `${room.available} vaga${room.available !== 1 ? 's' : ''}`}
                       </Text>
@@ -215,6 +224,7 @@ const s = StyleSheet.create({
   myRoom: { borderWidth: 2, borderColor: colors.primary },
   roomTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   roomName: { fontSize: 17, fontWeight: '700', color: colors.text },
+  roomMeta: { fontSize: 12, color: colors.muted, marginTop: 2 },
   spots: { fontSize: 14, fontWeight: '700' },
   roomBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
   occupancyText: { fontSize: 12, color: colors.muted },

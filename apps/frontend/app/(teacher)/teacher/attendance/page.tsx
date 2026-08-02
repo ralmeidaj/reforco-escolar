@@ -10,6 +10,15 @@ interface Session {
   student?: { id: string; name: string };
 }
 
+interface ActiveCheckin {
+  checkinId: string;
+  checkinAt: string;
+  studentId: string;
+  studentName: string;
+  roomId: string;
+  roomName: string;
+}
+
 interface Attendance {
   id: string;
   studentId: string;
@@ -37,14 +46,20 @@ export default function TeacherAttendancePage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [noteContent, setNoteContent] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [activeCheckins, setActiveCheckins] = useState<ActiveCheckin[]>([]);
 
   const today = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
-    api
-      .get<Session[]>(`/sessions?date=${today}`)
-      .then(({ data }) => setSessions(data))
-      .finally(() => setLoading(false));
+    Promise.all([
+      api.get<Session[]>(`/sessions?date=${today}`).then(({ data }) => setSessions(data)),
+      api.get<ActiveCheckin[]>('/rooms/checkins/active').then(({ data }) => setActiveCheckins(data)).catch(() => {}),
+    ]).finally(() => setLoading(false));
+
+    const interval = setInterval(() => {
+      api.get<ActiveCheckin[]>('/rooms/checkins/active').then(({ data }) => setActiveCheckins(data)).catch(() => {});
+    }, 30_000);
+    return () => clearInterval(interval);
   }, [today]);
 
   useEffect(() => {
@@ -110,6 +125,29 @@ export default function TeacherAttendancePage() {
         <h1 className="text-2xl font-bold text-gray-900">Lista de Presença</h1>
         <p className="mt-1 text-sm text-gray-500">Registre a presença dos alunos por sessão</p>
       </div>
+
+      {/* Alunos presentes agora (via kiosk) */}
+      {activeCheckins.length > 0 && (
+        <div className="rounded-2xl bg-blue-50 border border-blue-100 p-5 space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-blue-800">Alunos na escola agora</h2>
+            <p className="text-xs text-blue-500 mt-0.5">Check-in realizado pelo kiosk</p>
+          </div>
+          <ul className="space-y-2">
+            {activeCheckins.map((c) => (
+              <li key={c.checkinId} className="flex items-center justify-between gap-3 rounded-xl bg-white px-4 py-2.5">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{c.studentName}</p>
+                  <p className="text-xs text-gray-400">
+                    {c.roomName} · Entrada {new Date(c.checkinAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">Presente</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="rounded-2xl bg-white p-5 shadow-sm">
         <label className="block text-sm font-medium text-gray-700 mb-1">Sessão de hoje</label>

@@ -17,4 +17,14 @@ export class CreateRoomDto {
   @IsOptional()
   @IsUUID()
   fixedGroupId?: string;
+
+  @ApiPropertyOptional({ description: 'Professor alocado nesta sala' })
+  @IsOptional()
+  @IsUUID()
+  teacherId?: string;
+
+  @ApiPropertyOptional({ description: 'Disciplina desta sala' })
+  @IsOptional()
+  @IsUUID()
+  subjectId?: string;
 }
