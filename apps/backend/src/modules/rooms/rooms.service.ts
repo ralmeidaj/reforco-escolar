@@ -1,9 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, IsNull, Repository } from 'typeorm';
+import { Between, ILike, IsNull, Repository } from 'typeorm';
 import { Room } from './room.entity';
 import { RoomCheckin } from './room-checkin.entity';
 import { User } from '../auth/user.entity';
+import { Session } from '../scheduling/session.entity';
+import { Attendance } from '../attendance/attendance.entity';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 
@@ -16,6 +18,10 @@ export class RoomsService {
     private checkinsRepo: Repository<RoomCheckin>,
     @InjectRepository(User)
     private usersRepo: Repository<User>,
+    @InjectRepository(Session)
+    private sessionsRepo: Repository<Session>,
+    @InjectRepository(Attendance)
+    private attendancesRepo: Repository<Attendance>,
   ) {}
 
   findAll(tenantId: string) {
@@ -134,7 +140,46 @@ export class RoomsService {
 
     const checkin = this.checkinsRepo.create({ tenantId, roomId, studentId });
     const saved = await this.checkinsRepo.save(checkin);
+
+    // registra presença automaticamente na sessão de hoje (silencioso)
+    this.autoRegisterAttendance(tenantId, studentId).catch(() => {});
+
     return { ...saved, room: { id: room.id, name: room.name, capacity: room.capacity } };
+  }
+
+  private async autoRegisterAttendance(tenantId: string, studentId: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const session = await this.sessionsRepo
+      .createQueryBuilder('s')
+      .where('s.tenant_id = :tenantId', { tenantId })
+      .andWhere('s.student_id = :studentId', { studentId })
+      .andWhere("s.channel = 'presencial'")
+      .andWhere("s.status IN ('agendada', 'confirmada')")
+      .andWhere('s.scheduled_at >= :today', { today })
+      .andWhere('s.scheduled_at < :tomorrow', { tomorrow })
+      .orderBy('s.scheduled_at', 'ASC')
+      .getOne();
+
+    if (!session) return;
+
+    const existing = await this.attendancesRepo.findOne({
+      where: { tenantId, sessionId: session.id, studentId },
+    });
+
+    if (existing) {
+      if (existing.status !== 'presente') {
+        existing.status = 'presente';
+        await this.attendancesRepo.save(existing);
+      }
+    } else {
+      await this.attendancesRepo.save(
+        this.attendancesRepo.create({ tenantId, sessionId: session.id, studentId, status: 'presente' }),
+      );
+    }
   }
 
   async checkout(tenantId: string, studentId: string) {
