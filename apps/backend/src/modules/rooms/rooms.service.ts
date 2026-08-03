@@ -166,10 +166,8 @@ export class RoomsService {
     });
     const scheduleRoomIds = new Set(scheduledRooms.map((s) => s.roomId));
 
-    // Exibe apenas salas com horário no turno atual + salas com alunos em check-in ativo
-    const visibleRooms = rooms.filter((r) =>
-      scheduleRoomIds.has(r.id) || (occupancy[r.id] ?? 0) > 0
-    );
+    // Exibe apenas salas com horário cadastrado para o turno atual
+    const visibleRooms = rooms.filter((r) => scheduleRoomIds.has(r.id));
 
     return visibleRooms.map((room) => {
       const current = occupancy[room.id] ?? 0;
