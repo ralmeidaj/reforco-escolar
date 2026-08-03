@@ -166,10 +166,10 @@ export class RoomsService {
     });
     const scheduleRoomIds = new Set(scheduledRooms.map((s) => s.roomId));
 
-    // Se houver grade cadastrada, filtrar; caso contrário exibir todas (walk-in sem grade)
-    const visibleRooms = scheduleRoomIds.size > 0
-      ? rooms.filter((r) => scheduleRoomIds.has(r.id) || (occupancy[r.id] ?? 0) > 0)
-      : rooms;
+    // Exibe apenas salas com horário no turno atual + salas com alunos em check-in ativo
+    const visibleRooms = rooms.filter((r) =>
+      scheduleRoomIds.has(r.id) || (occupancy[r.id] ?? 0) > 0
+    );
 
     return visibleRooms.map((room) => {
       const current = occupancy[room.id] ?? 0;
