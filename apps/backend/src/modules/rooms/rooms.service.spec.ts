@@ -5,6 +5,8 @@ import { RoomsService } from './rooms.service';
 import { Room } from './room.entity';
 import { RoomAssignment } from './room-assignment.entity';
 import { RoomCheckin } from './room-checkin.entity';
+import { RoomSchedule } from './room-schedule.entity';
+import { RoomScheduleTeacher } from './room-schedule-teacher.entity';
 import { User } from '../auth/user.entity';
 import { Session } from '../scheduling/session.entity';
 import { Attendance } from '../attendance/attendance.entity';
@@ -40,12 +42,14 @@ describe('RoomsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RoomsService,
-        { provide: getRepositoryToken(Room),           useValue: roomsRepo },
-        { provide: getRepositoryToken(RoomAssignment), useValue: makeRepo() },
-        { provide: getRepositoryToken(RoomCheckin),    useValue: makeRepo() },
-        { provide: getRepositoryToken(User),           useValue: makeRepo() },
-        { provide: getRepositoryToken(Session),        useValue: makeRepo() },
-        { provide: getRepositoryToken(Attendance),     useValue: makeRepo() },
+        { provide: getRepositoryToken(Room),                useValue: roomsRepo },
+        { provide: getRepositoryToken(RoomAssignment),      useValue: makeRepo() },
+        { provide: getRepositoryToken(RoomCheckin),         useValue: makeRepo() },
+        { provide: getRepositoryToken(RoomSchedule),        useValue: makeRepo() },
+        { provide: getRepositoryToken(RoomScheduleTeacher), useValue: makeRepo() },
+        { provide: getRepositoryToken(User),                useValue: makeRepo() },
+        { provide: getRepositoryToken(Session),             useValue: makeRepo() },
+        { provide: getRepositoryToken(Attendance),          useValue: makeRepo() },
       ],
     }).compile();
 

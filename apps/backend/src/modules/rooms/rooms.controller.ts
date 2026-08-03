@@ -22,6 +22,7 @@ import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { CreateRoomAssignmentDto } from './dto/create-room-assignment.dto';
 import { ReassignStudentDto } from './dto/reassign-student.dto';
+import { UpsertRoomScheduleDto } from './dto/upsert-room-schedule.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('Rooms')
@@ -154,6 +155,41 @@ export class RoomsController {
     @Param('assignmentId') assignmentId: string,
   ) {
     return this.roomsService.removeAssignment(req.tenant.id, id, assignmentId);
+  }
+
+  // ── Schedules (grade de horários) ────────────────────────────────────────────
+
+  @Get(':id/schedules')
+  @Roles('tenant_admin', 'teacher')
+  @ApiOperation({ summary: 'Grade de horários da sala' })
+  @ApiParam({ name: 'id', type: 'string' })
+  @ApiResponse({ status: 200 })
+  getSchedules(@Req() req: any, @Param('id') id: string) {
+    return this.roomsService.getSchedules(req.tenant.id, id);
+  }
+
+  @Post(':id/schedules')
+  @Roles('tenant_admin')
+  @ApiOperation({ summary: 'Criar/atualizar slot da grade (dia + turno)' })
+  @ApiParam({ name: 'id', type: 'string' })
+  @ApiResponse({ status: 201 })
+  upsertSchedule(@Req() req: any, @Param('id') id: string, @Body() dto: UpsertRoomScheduleDto) {
+    return this.roomsService.upsertSchedule(req.tenant.id, id, dto);
+  }
+
+  @Delete(':id/schedules/:scheduleId')
+  @Roles('tenant_admin')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remover slot da grade' })
+  @ApiParam({ name: 'id', type: 'string' })
+  @ApiParam({ name: 'scheduleId', type: 'string' })
+  @ApiResponse({ status: 204 })
+  deleteSchedule(
+    @Req() req: any,
+    @Param('id') _id: string,
+    @Param('scheduleId') scheduleId: string,
+  ) {
+    return this.roomsService.deleteSchedule(req.tenant.id, scheduleId);
   }
 
   // ── Reassign ─────────────────────────────────────────────────────────────────

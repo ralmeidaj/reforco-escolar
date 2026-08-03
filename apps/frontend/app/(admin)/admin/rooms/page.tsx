@@ -34,6 +34,18 @@ interface ActiveCheckin {
 
 interface Teacher { id: string; name: string }
 interface Subject { id: string; name: string }
+interface ScheduleTeacher { id: string; teacher: { id: string; name: string } }
+interface Schedule {
+  id: string;
+  dayOfWeek: number;
+  shift: 'manhã' | 'tarde' | 'noite';
+  subject: { id: string; name: string } | null;
+  teachers: ScheduleTeacher[];
+}
+
+const SHIFTS: Array<'manhã' | 'tarde' | 'noite'> = ['manhã', 'tarde', 'noite'];
+const SHIFT_LABELS = { manhã: 'Manhã', tarde: 'Tarde', noite: 'Noite' };
+const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -55,6 +67,15 @@ export default function RoomsPage() {
   const [reassigning, setReassigning] = useState<ActiveCheckin | null>(null);
   const [newAssignmentId, setNewAssignmentId] = useState('');
   const [reassignSaving, setReassignSaving] = useState(false);
+
+  // grade de horários
+  const [scheduleRoom, setScheduleRoom] = useState<Room | null>(null);
+  const [roomSchedules, setRoomSchedules] = useState<Schedule[]>([]);
+  const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const [cellEdit, setCellEdit] = useState<{ dayOfWeek: number; shift: 'manhã' | 'tarde' | 'noite'; existing: Schedule | null } | null>(null);
+  const [cellSubject, setCellSubject] = useState('');
+  const [cellTeachers, setCellTeachers] = useState<string[]>([]);
+  const [cellSaving, setCellSaving] = useState(false);
 
   const loadRooms = useCallback(() =>
     api.get<Room[]>('/rooms/occupancy').then(({ data }) => setRooms(data)), []);
@@ -118,6 +139,50 @@ export default function RoomsPage() {
       setReassigning(null);
       setNewAssignmentId('');
     } catch {} finally { setReassignSaving(false); }
+  }
+
+  async function openScheduleModal(room: Room) {
+    setScheduleRoom(room);
+    setRoomSchedules([]);
+    setCellEdit(null);
+    setLoadingSchedules(true);
+    try {
+      const { data } = await api.get<Schedule[]>(`/rooms/${room.id}/schedules`);
+      setRoomSchedules(data);
+    } finally { setLoadingSchedules(false); }
+  }
+
+  function openCellEdit(dayOfWeek: number, shift: 'manhã' | 'tarde' | 'noite') {
+    const existing = roomSchedules.find((s) => s.dayOfWeek === dayOfWeek && s.shift === shift) ?? null;
+    setCellEdit({ dayOfWeek, shift, existing });
+    setCellSubject(existing?.subject?.id ?? '');
+    setCellTeachers(existing?.teachers.map((t) => t.teacher.id) ?? []);
+  }
+
+  async function handleSaveCell() {
+    if (!scheduleRoom || !cellEdit) return;
+    setCellSaving(true);
+    try {
+      await api.post(`/rooms/${scheduleRoom.id}/schedules`, {
+        dayOfWeek: cellEdit.dayOfWeek,
+        shift: cellEdit.shift,
+        subjectId: cellSubject || undefined,
+        teacherIds: cellTeachers,
+      });
+      const { data } = await api.get<Schedule[]>(`/rooms/${scheduleRoom.id}/schedules`);
+      setRoomSchedules(data);
+      setCellEdit(null);
+    } finally { setCellSaving(false); }
+  }
+
+  async function handleDeleteCell() {
+    if (!scheduleRoom || !cellEdit?.existing) return;
+    setCellSaving(true);
+    try {
+      await api.delete(`/rooms/${scheduleRoom.id}/schedules/${cellEdit.existing.id}`);
+      setRoomSchedules((prev) => prev.filter((s) => s.id !== cellEdit.existing!.id));
+      setCellEdit(null);
+    } finally { setCellSaving(false); }
   }
 
   function occupancyColor(current: number, capacity: number) {
@@ -236,6 +301,12 @@ export default function RoomsPage() {
                         />
                       </div>
                     </div>
+                    <button
+                      onClick={() => openScheduleModal(r)}
+                      className="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                    >
+                      Horários
+                    </button>
                     <button onClick={() => handleDelete(r.id)} className="text-xs text-red-500 hover:text-red-700">
                       Remover
                     </button>
@@ -318,6 +389,150 @@ export default function RoomsPage() {
           </ul>
         )}
       </div>
+
+      {/* Modal de grade de horários */}
+      {scheduleRoom && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-3xl rounded-2xl bg-white shadow-xl flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Horários — {scheduleRoom.name}</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Clique em uma célula para definir disciplina e professores</p>
+              </div>
+              <button onClick={() => { setScheduleRoom(null); setCellEdit(null); }} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+            </div>
+
+            <div className="overflow-auto flex-1 p-4">
+              {loadingSchedules ? (
+                <div className="flex items-center justify-center py-12"><Spinner size="lg" className="text-brand-600" /></div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-sm">
+                    <thead>
+                      <tr>
+                        <th className="w-20 py-2 text-left text-xs font-semibold text-gray-400" />
+                        {DAY_LABELS.map((d, i) => (
+                          <th key={i} className="py-2 text-center text-xs font-semibold text-gray-500">{d}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {SHIFTS.map((shift) => (
+                        <tr key={shift}>
+                          <td className="pr-3 py-1.5 text-xs font-semibold text-gray-500 whitespace-nowrap">
+                            {SHIFT_LABELS[shift]}
+                          </td>
+                          {DAY_LABELS.map((_, dayOfWeek) => {
+                            const slot = roomSchedules.find((s) => s.dayOfWeek === dayOfWeek && s.shift === shift);
+                            const isEditing = cellEdit?.dayOfWeek === dayOfWeek && cellEdit?.shift === shift;
+                            return (
+                              <td key={dayOfWeek} className="py-1 px-1">
+                                <button
+                                  onClick={() => openCellEdit(dayOfWeek, shift)}
+                                  className={cn(
+                                    'w-full min-h-[56px] rounded-xl border p-2 text-left text-xs transition-all',
+                                    isEditing
+                                      ? 'border-brand-400 bg-brand-50 ring-1 ring-brand-400'
+                                      : slot
+                                        ? 'border-brand-200 bg-brand-50 hover:border-brand-400'
+                                        : 'border-dashed border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-gray-100',
+                                  )}
+                                >
+                                  {slot ? (
+                                    <>
+                                      {slot.subject && <div className="font-semibold text-brand-700 truncate">{slot.subject.name}</div>}
+                                      {slot.teachers.length > 0 && (
+                                        <div className="text-gray-500 truncate">
+                                          {slot.teachers.map((t) => t.teacher.name.split(' ')[0]).join(', ')}
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="text-gray-300">+</span>
+                                  )}
+                                </button>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Edição de célula inline */}
+              {cellEdit && (
+                <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-4 space-y-3">
+                  <p className="text-xs font-semibold text-brand-700">
+                    {DAY_LABELS[cellEdit.dayOfWeek]} — {SHIFT_LABELS[cellEdit.shift]}
+                  </p>
+
+                  <div className="flex flex-wrap gap-3">
+                    <div className="flex-1 min-w-40">
+                      <label className="mb-1 block text-xs font-medium text-gray-600">Disciplina</label>
+                      <select
+                        value={cellSubject}
+                        onChange={(e) => setCellSubject(e.target.value)}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                      >
+                        <option value="">Sem disciplina</option>
+                        {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="flex-1 min-w-48">
+                      <label className="mb-1 block text-xs font-medium text-gray-600">Professores</label>
+                      <div className="flex flex-wrap gap-2">
+                        {teachers.map((t) => (
+                          <label key={t.id} className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={cellTeachers.includes(t.id)}
+                              onChange={(e) =>
+                                setCellTeachers((prev) =>
+                                  e.target.checked ? [...prev, t.id] : prev.filter((id) => id !== t.id)
+                                )
+                              }
+                              className="accent-brand-600"
+                            />
+                            <span className="text-sm text-gray-700">{t.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveCell}
+                        disabled={cellSaving}
+                        className="rounded-lg bg-brand-600 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60 flex items-center gap-1"
+                      >
+                        {cellSaving ? <Spinner size="sm" className="text-white" /> : null}
+                        Salvar
+                      </button>
+                      <button onClick={() => setCellEdit(null)} className="rounded-lg border border-gray-200 px-4 py-2 text-xs text-gray-600 hover:bg-gray-50">
+                        Cancelar
+                      </button>
+                    </div>
+                    {cellEdit.existing && (
+                      <button
+                        onClick={handleDeleteCell}
+                        disabled={cellSaving}
+                        className="rounded-lg px-4 py-2 text-xs text-red-500 hover:bg-red-50 disabled:opacity-60"
+                      >
+                        Remover horário
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de reassign */}
       {reassigning && (

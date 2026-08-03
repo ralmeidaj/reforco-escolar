@@ -4,12 +4,15 @@ import { Between, ILike, IsNull, Repository } from 'typeorm';
 import { Room } from './room.entity';
 import { RoomAssignment } from './room-assignment.entity';
 import { RoomCheckin } from './room-checkin.entity';
+import { RoomSchedule } from './room-schedule.entity';
+import { RoomScheduleTeacher } from './room-schedule-teacher.entity';
 import { User } from '../auth/user.entity';
 import { Session } from '../scheduling/session.entity';
 import { Attendance } from '../attendance/attendance.entity';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { CreateRoomAssignmentDto } from './dto/create-room-assignment.dto';
+import { UpsertRoomScheduleDto } from './dto/upsert-room-schedule.dto';
 
 @Injectable()
 export class RoomsService {
@@ -20,6 +23,10 @@ export class RoomsService {
     private assignmentsRepo: Repository<RoomAssignment>,
     @InjectRepository(RoomCheckin)
     private checkinsRepo: Repository<RoomCheckin>,
+    @InjectRepository(RoomSchedule)
+    private schedulesRepo: Repository<RoomSchedule>,
+    @InjectRepository(RoomScheduleTeacher)
+    private scheduleTeachersRepo: Repository<RoomScheduleTeacher>,
     @InjectRepository(User)
     private usersRepo: Repository<User>,
     @InjectRepository(Session)
@@ -146,37 +153,22 @@ export class RoomsService {
 
     const occupancy = Object.fromEntries(rows.map((r) => [r.roomId, Number(r.count)]));
 
-    // Determina a janela do turno atual com base na hora do servidor
-    const h = new Date().getHours();
-    const shiftStart = new Date();
-    const shiftEnd = new Date();
-    if (h < 12) {
-      shiftStart.setHours(6, 0, 0, 0);
-      shiftEnd.setHours(11, 59, 59, 999);
-    } else if (h < 18) {
-      shiftStart.setHours(12, 0, 0, 0);
-      shiftEnd.setHours(17, 59, 59, 999);
-    } else {
-      shiftStart.setHours(18, 0, 0, 0);
-      shiftEnd.setHours(23, 59, 59, 999);
-    }
+    // Determina turno atual e dia da semana pelo horário do servidor
+    const now = new Date();
+    const h = now.getHours();
+    const currentShift = h < 12 ? 'manhã' : h < 18 ? 'tarde' : 'noite';
+    const dayOfWeek = now.getDay(); // 0=Dom … 6=Sáb
 
-    // Salas com sessões agendadas no turno atual (exceto canceladas)
-    const shiftRows: Array<{ roomId: string }> = await this.sessionsRepo
-      .createQueryBuilder('s')
-      .select('DISTINCT s.room_id', 'roomId')
-      .where('s.tenant_id = :tenantId', { tenantId })
-      .andWhere('s.room_id IS NOT NULL')
-      .andWhere('s.scheduled_at >= :shiftStart', { shiftStart })
-      .andWhere('s.scheduled_at <= :shiftEnd', { shiftEnd })
-      .andWhere('s.status != :cancelled', { cancelled: 'cancelada' })
-      .getRawMany();
+    // Salas com horário cadastrado para hoje + turno atual
+    const scheduledRooms = await this.schedulesRepo.find({
+      where: { tenantId, dayOfWeek, shift: currentShift as any },
+      select: { roomId: true },
+    });
+    const scheduleRoomIds = new Set(scheduledRooms.map((s) => s.roomId));
 
-    const shiftRoomIds = new Set(shiftRows.map((r) => r.roomId));
-
-    // Se houver sessões no turno, filtrar; caso contrário exibir todas (walk-in sem pré-agendamento)
-    const visibleRooms = shiftRoomIds.size > 0
-      ? rooms.filter((r) => shiftRoomIds.has(r.id) || (occupancy[r.id] ?? 0) > 0)
+    // Se houver grade cadastrada, filtrar; caso contrário exibir todas (walk-in sem grade)
+    const visibleRooms = scheduleRoomIds.size > 0
+      ? rooms.filter((r) => scheduleRoomIds.has(r.id) || (occupancy[r.id] ?? 0) > 0)
       : rooms;
 
     return visibleRooms.map((room) => {
@@ -403,5 +395,54 @@ export class RoomsService {
       take: 10,
       order: { name: 'ASC' },
     });
+  }
+
+  // ── Grade de horários por sala ──────────────────────────────────────────────
+
+  getSchedules(tenantId: string, roomId: string) {
+    return this.schedulesRepo.find({
+      where: { tenantId, roomId },
+      relations: { subject: true, teachers: { teacher: true } },
+      order: { dayOfWeek: 'ASC', shift: 'ASC' },
+    });
+  }
+
+  async upsertSchedule(tenantId: string, roomId: string, dto: UpsertRoomScheduleDto) {
+    // verifica se a sala pertence ao tenant
+    const room = await this.roomsRepo.findOne({ where: { tenantId, id: roomId } });
+    if (!room) throw new NotFoundException('Sala não encontrada');
+
+    // remove slot existente para o mesmo dia+turno (se houver) e recria
+    const existing = await this.schedulesRepo.findOne({
+      where: { tenantId, roomId, dayOfWeek: dto.dayOfWeek, shift: dto.shift as any },
+    });
+    if (existing) await this.schedulesRepo.remove(existing);
+
+    const schedule = this.schedulesRepo.create({
+      tenantId,
+      roomId,
+      dayOfWeek: dto.dayOfWeek,
+      shift: dto.shift as any,
+      subjectId: dto.subjectId ?? null,
+    });
+    const saved = await this.schedulesRepo.save(schedule);
+
+    if (dto.teacherIds.length > 0) {
+      const teachers = dto.teacherIds.map((teacherId) =>
+        this.scheduleTeachersRepo.create({ scheduleId: saved.id, teacherId }),
+      );
+      await this.scheduleTeachersRepo.save(teachers);
+    }
+
+    return this.schedulesRepo.findOne({
+      where: { id: saved.id },
+      relations: { subject: true, teachers: { teacher: true } },
+    });
+  }
+
+  async deleteSchedule(tenantId: string, scheduleId: string) {
+    const schedule = await this.schedulesRepo.findOne({ where: { tenantId, id: scheduleId } });
+    if (!schedule) throw new NotFoundException('Horário não encontrado');
+    await this.schedulesRepo.remove(schedule);
   }
 }
