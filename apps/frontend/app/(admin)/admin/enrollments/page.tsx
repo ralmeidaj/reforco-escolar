@@ -51,22 +51,25 @@ export default function EnrollmentsPage() {
     loadEnrollments(student);
   }
 
-  async function toggleEnrollment(subject: Subject, groupId?: string) {
+  async function reloadEnrollments(studentId: string) {
+    const { data } = await api.get<Enrollment[]>(`/subjects/enrollments?studentId=${studentId}`);
+    setEnrollments(data);
+  }
+
+  async function toggleEnrollment(subject: Subject) {
     if (!selected) return;
     setBusy((b) => ({ ...b, [subject.id]: true }));
     try {
       const existing = enrollments.find((e) => e.subject.id === subject.id);
       if (existing) {
         await api.delete(`/subjects/enrollments/${existing.id}`);
-        setEnrollments((prev) => prev.filter((e) => e.id !== existing.id));
       } else {
-        const { data } = await api.post<Enrollment>('/subjects/enrollments', {
+        await api.post('/subjects/enrollments', {
           studentId: selected.id,
           subjectId: subject.id,
-          groupId: groupId || undefined,
         });
-        setEnrollments((prev) => [...prev, data]);
       }
+      await reloadEnrollments(selected.id);
     } finally {
       setBusy((b) => ({ ...b, [subject.id]: false }));
     }
@@ -76,14 +79,13 @@ export default function EnrollmentsPage() {
     if (!selected) return;
     setBusy((b) => ({ ...b, [enrollment.subject.id]: true }));
     try {
-      // remove e recria com nova turma
       await api.delete(`/subjects/enrollments/${enrollment.id}`);
-      const { data } = await api.post<Enrollment>('/subjects/enrollments', {
+      await api.post('/subjects/enrollments', {
         studentId: selected.id,
         subjectId: enrollment.subject.id,
         groupId: groupId || undefined,
       });
-      setEnrollments((prev) => prev.map((e) => e.id === enrollment.id ? data : e));
+      await reloadEnrollments(selected.id);
     } finally {
       setBusy((b) => ({ ...b, [enrollment.subject.id]: false }));
     }
