@@ -3,6 +3,21 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { RoomsService } from './rooms.service';
 import { Room } from './room.entity';
+import { RoomAssignment } from './room-assignment.entity';
+import { RoomCheckin } from './room-checkin.entity';
+import { User } from '../auth/user.entity';
+import { Session } from '../scheduling/session.entity';
+import { Attendance } from '../attendance/attendance.entity';
+
+const makeQb = () => ({
+  select: jest.fn().mockReturnThis(),
+  addSelect: jest.fn().mockReturnThis(),
+  leftJoin: jest.fn().mockReturnThis(),
+  where: jest.fn().mockReturnThis(),
+  andWhere: jest.fn().mockReturnThis(),
+  groupBy: jest.fn().mockReturnThis(),
+  getRawMany: jest.fn().mockResolvedValue([]),
+});
 
 const makeRepo = () => ({
   find: jest.fn(),
@@ -10,14 +25,7 @@ const makeRepo = () => ({
   create: jest.fn((dto: any) => dto),
   save: jest.fn(),
   remove: jest.fn(),
-  createQueryBuilder: jest.fn().mockReturnValue({
-    select: jest.fn().mockReturnThis(),
-    addSelect: jest.fn().mockReturnThis(),
-    leftJoin: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    groupBy: jest.fn().mockReturnThis(),
-    getRawMany: jest.fn().mockResolvedValue([]),
-  }),
+  createQueryBuilder: jest.fn().mockReturnValue(makeQb()),
 });
 
 describe('RoomsService', () => {
@@ -32,7 +40,12 @@ describe('RoomsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RoomsService,
-        { provide: getRepositoryToken(Room), useValue: roomsRepo },
+        { provide: getRepositoryToken(Room),           useValue: roomsRepo },
+        { provide: getRepositoryToken(RoomAssignment), useValue: makeRepo() },
+        { provide: getRepositoryToken(RoomCheckin),    useValue: makeRepo() },
+        { provide: getRepositoryToken(User),           useValue: makeRepo() },
+        { provide: getRepositoryToken(Session),        useValue: makeRepo() },
+        { provide: getRepositoryToken(Attendance),     useValue: makeRepo() },
       ],
     }).compile();
 
@@ -48,7 +61,7 @@ describe('RoomsService', () => {
       expect(roomsRepo.find).toHaveBeenCalledWith({
         where: { tenantId: TENANT },
         order: { name: 'ASC' },
-        relations: { fixedGroup: true },
+        relations: { fixedGroup: true, assignments: { teacher: true, subject: true } },
       });
     });
   });
@@ -108,9 +121,9 @@ describe('RoomsService', () => {
 
   describe('getOccupancy', () => {
     it('retorna salas com currentOccupancy zerado quando não há sessões ativas', async () => {
-      const rooms = [{ id: 'r1', name: 'Sala 01', capacity: 10, tenantId: TENANT }];
+      const rooms = [{ id: 'r1', name: 'Sala 01', capacity: 10, tenantId: TENANT, assignments: [] }];
       roomsRepo.find.mockResolvedValue(rooms);
-      // getRawMany já mockado para retornar []
+      // createQueryBuilder já mockado para retornar getRawMany: []
       const result = await service.getOccupancy(TENANT);
       expect(result[0].currentOccupancy).toBe(0);
     });
