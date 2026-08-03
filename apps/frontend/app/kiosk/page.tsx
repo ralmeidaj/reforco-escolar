@@ -373,13 +373,33 @@ function Modal({ children, center }: { children: React.ReactNode; center?: boole
   );
 }
 
+function getShiftLabel(h: number): { label: string; range: string } {
+  if (h < 12) return { label: 'Manhã', range: '06h – 12h' };
+  if (h < 18) return { label: 'Tarde', range: '12h – 18h' };
+  return { label: 'Noite', range: '18h – 24h' };
+}
+
 function Clock() {
   const [time, setTime] = useState('');
+  const [shift, setShift] = useState<{ label: string; range: string } | null>(null);
   useEffect(() => {
-    const update = () => setTime(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+    const update = () => {
+      const now = new Date();
+      setTime(now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+      setShift(getShiftLabel(now.getHours()));
+    };
     update();
     const t = setInterval(update, 10_000);
     return () => clearInterval(t);
   }, []);
-  return <span className="text-3xl font-black">{time}</span>;
+  return (
+    <div className="text-right">
+      <div className="text-3xl font-black">{time}</div>
+      {shift && (
+        <div className="mt-0.5 text-sm font-semibold text-blue-200">
+          Turno da {shift.label} · {shift.range}
+        </div>
+      )}
+    </div>
+  );
 }

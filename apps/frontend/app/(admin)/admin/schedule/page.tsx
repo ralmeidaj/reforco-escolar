@@ -38,6 +38,19 @@ const STATUS_COLORS: Record<string, string> = {
 
 const WEEK_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+const SHIFTS = [
+  { label: 'Manhã',  start: 6,  end: 12 },
+  { label: 'Tarde',  start: 12, end: 18 },
+  { label: 'Noite',  start: 18, end: 24 },
+];
+
+function sessionShift(scheduledAt: string) {
+  const h = new Date(scheduledAt).getHours();
+  if (h < 12) return 'Manhã';
+  if (h < 18) return 'Tarde';
+  return 'Noite';
+}
+
 function startOfWeek(d: Date) {
   const day = d.getDay();
   const diff = d.getDate() - day;
@@ -192,50 +205,66 @@ export default function SchedulePage() {
         </button>
       </div>
 
-      {/* Grade da semana */}
+      {/* Grade turno × dia */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Spinner size="lg" className="text-brand-600" />
         </div>
       ) : (
-        <div className="grid grid-cols-7 gap-2">
-          {days.map((day) => {
-            const isToday = isoDate(day.date) === today;
-            return (
-              <div key={isoDate(day.date)} className="min-h-32">
-                <div className={cn(
-                  'mb-2 rounded-lg px-2 py-1 text-center text-xs font-medium',
-                  isToday ? 'bg-brand-600 text-white' : 'bg-white text-gray-500',
+        <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+          {/* Cabeçalho com os dias */}
+          <div className="grid grid-cols-[80px_repeat(7,1fr)] border-b border-gray-100">
+            <div className="px-3 py-2" />
+            {days.map((day) => {
+              const isToday = isoDate(day.date) === today;
+              return (
+                <div key={isoDate(day.date)} className={cn(
+                  'px-2 py-2 text-center border-l border-gray-100',
+                  isToday ? 'bg-brand-600' : 'bg-gray-50',
                 )}>
-                  <div>{day.label}</div>
-                  <div className={cn('text-lg font-bold', isToday ? 'text-white' : 'text-gray-900')}>{day.dayNum}</div>
+                  <div className={cn('text-xs font-medium', isToday ? 'text-blue-100' : 'text-gray-400')}>{day.label}</div>
+                  <div className={cn('text-base font-bold', isToday ? 'text-white' : 'text-gray-800')}>{day.dayNum}</div>
                 </div>
+              );
+            })}
+          </div>
 
-                <div className="space-y-1.5">
-                  {day.sessions.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-gray-200 py-3 text-center text-xs text-gray-300">
-                      —
-                    </div>
-                  ) : (
-                    day.sessions.map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => { setStatusModal(s); setNewStatus(s.status); }}
-                        className={cn(
-                          'w-full rounded-lg px-2 py-1.5 text-left text-xs transition-all hover:opacity-80',
-                          STATUS_COLORS[s.status],
-                        )}
-                      >
-                        <div className="font-medium truncate">{s.student ? s.student.name.split(' ')[0] : 'A definir'}</div>
-                        <div className="truncate opacity-70">{s.subject.name}</div>
-                        <div className="opacity-60">{new Date(s.scheduledAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
-                      </button>
-                    ))
-                  )}
-                </div>
+          {/* Linhas por turno */}
+          {SHIFTS.map((shift, si) => (
+            <div key={shift.label} className={cn('grid grid-cols-[80px_repeat(7,1fr)]', si < SHIFTS.length - 1 && 'border-b border-gray-100')}>
+              {/* Label do turno */}
+              <div className="flex items-start justify-center px-2 py-3 bg-gray-50 border-r border-gray-100">
+                <span className="text-xs font-semibold text-gray-500 rotate-0">{shift.label}</span>
               </div>
-            );
-          })}
+
+              {/* Células dia × turno */}
+              {days.map((day) => {
+                const cellSessions = day.sessions.filter((s) => sessionShift(s.scheduledAt) === shift.label);
+                return (
+                  <div key={isoDate(day.date)} className="min-h-[80px] p-1.5 border-l border-gray-100 space-y-1">
+                    {cellSessions.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-gray-200 text-xs">—</div>
+                    ) : (
+                      cellSessions.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => { setStatusModal(s); setNewStatus(s.status); }}
+                          className={cn(
+                            'w-full rounded-lg px-2 py-1.5 text-left text-xs transition-all hover:opacity-80',
+                            STATUS_COLORS[s.status],
+                          )}
+                        >
+                          <div className="font-medium truncate">{s.student ? s.student.name.split(' ')[0] : 'A definir'}</div>
+                          <div className="truncate opacity-70">{s.subject.name}</div>
+                          <div className="opacity-60">{new Date(s.scheduledAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
 

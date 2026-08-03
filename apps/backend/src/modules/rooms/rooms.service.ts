@@ -146,7 +146,40 @@ export class RoomsService {
 
     const occupancy = Object.fromEntries(rows.map((r) => [r.roomId, Number(r.count)]));
 
-    return rooms.map((room) => {
+    // Determina a janela do turno atual com base na hora do servidor
+    const h = new Date().getHours();
+    const shiftStart = new Date();
+    const shiftEnd = new Date();
+    if (h < 12) {
+      shiftStart.setHours(6, 0, 0, 0);
+      shiftEnd.setHours(11, 59, 59, 999);
+    } else if (h < 18) {
+      shiftStart.setHours(12, 0, 0, 0);
+      shiftEnd.setHours(17, 59, 59, 999);
+    } else {
+      shiftStart.setHours(18, 0, 0, 0);
+      shiftEnd.setHours(23, 59, 59, 999);
+    }
+
+    // Salas com sessões agendadas no turno atual (exceto canceladas)
+    const shiftRows: Array<{ roomId: string }> = await this.sessionsRepo
+      .createQueryBuilder('s')
+      .select('DISTINCT s.room_id', 'roomId')
+      .where('s.tenant_id = :tenantId', { tenantId })
+      .andWhere('s.room_id IS NOT NULL')
+      .andWhere('s.scheduled_at >= :shiftStart', { shiftStart })
+      .andWhere('s.scheduled_at <= :shiftEnd', { shiftEnd })
+      .andWhere('s.status != :cancelled', { cancelled: 'cancelada' })
+      .getRawMany();
+
+    const shiftRoomIds = new Set(shiftRows.map((r) => r.roomId));
+
+    // Se houver sessões no turno, filtrar; caso contrário exibir todas (walk-in sem pré-agendamento)
+    const visibleRooms = shiftRoomIds.size > 0
+      ? rooms.filter((r) => shiftRoomIds.has(r.id) || (occupancy[r.id] ?? 0) > 0)
+      : rooms;
+
+    return visibleRooms.map((room) => {
       const current = occupancy[room.id] ?? 0;
       return {
         id: room.id,
