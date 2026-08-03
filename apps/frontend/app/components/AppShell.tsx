@@ -8,55 +8,61 @@ import { cn } from '@/app/lib/utils';
 import { api } from '@/app/lib/api';
 import { Spinner } from '@/app/components/Spinner';
 import { NotificationBell } from '@/app/components/NotificationBell';
+import {
+  LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
+  Calendar, DoorOpen, Monitor, CheckSquare, Wallet, BarChart2, Settings,
+  FileText, MessageCircle, TrendingUp, Brain, UserPlus,
+} from 'lucide-react';
 
 interface Me { name: string; email: string; role: string }
-interface NavItem { href?: string; label: string; external?: boolean; section?: boolean }
+type LucideIcon = React.ComponentType<{ className?: string }>;
+interface NavItem { href?: string; label: string; external?: boolean; section?: boolean; icon?: LucideIcon }
 
 const adminNav: NavItem[] = [
-  { href: '/admin',              label: 'Dashboard' },
+  { href: '/admin',              label: 'Dashboard',     icon: LayoutDashboard },
   { section: true,               label: 'Cadastros' },
-  { href: '/admin/users',        label: 'Usuários' },
-  { href: '/admin/subjects',     label: 'Disciplinas' },
-  { href: '/admin/groups',       label: 'Turmas' },
-  { href: '/admin/enrollments',  label: 'Matrículas' },
+  { href: '/admin/users',        label: 'Usuários',      icon: Users },
+  { href: '/admin/subjects',     label: 'Disciplinas',   icon: BookOpen },
+  { href: '/admin/groups',       label: 'Turmas',        icon: GraduationCap },
+  { href: '/admin/enrollments',  label: 'Matrículas',    icon: UserPlus },
   { section: true,               label: 'Operacional' },
-  { href: '/admin/schedule',     label: 'Agendamento' },
-  { href: '/admin/rooms',        label: 'Salas' },
-  { href: '/kiosk',              label: 'Kiosk', external: true },
-  { href: '/admin/attendance',   label: 'Presenças' },
-  { href: '/admin/finance',      label: 'Financeiro' },
-  { href: '/admin/reports',      label: 'Relatórios' },
-  { href: '/admin/settings',     label: 'Configurações' },
+  { href: '/admin/schedule',     label: 'Agendamento',   icon: Calendar },
+  { href: '/admin/rooms',        label: 'Salas',         icon: DoorOpen },
+  { href: '/kiosk',              label: 'Kiosk',         icon: Monitor, external: true },
+  { href: '/admin/attendance',   label: 'Presenças',     icon: CheckSquare },
+  { href: '/admin/finance',      label: 'Financeiro',    icon: Wallet },
+  { href: '/admin/reports',      label: 'Relatórios',    icon: BarChart2 },
+  { href: '/admin/settings',     label: 'Configurações', icon: Settings },
 ];
 
-const teacherNav = [
-  { href: '/teacher',              label: 'Dashboard' },
-  { href: '/teacher/attendance',   label: 'Presença' },
-  { href: '/teacher/tasks',        label: 'Tarefas' },
-  { href: '/teacher/notes',        label: 'Notas de aula' },
-  { href: '/teacher/students',     label: 'Alunos' },
-  { href: '/teacher/chat',         label: 'Chat' },
-  { href: '/teacher/ai',           label: 'IA Pedagógica' },
+const teacherNav: NavItem[] = [
+  { href: '/teacher',              label: 'Dashboard',     icon: LayoutDashboard },
+  { href: '/teacher/attendance',   label: 'Presença',      icon: CheckSquare },
+  { href: '/teacher/tasks',        label: 'Tarefas',       icon: ClipboardList },
+  { href: '/teacher/notes',        label: 'Notas de aula', icon: FileText },
+  { href: '/teacher/students',     label: 'Alunos',        icon: Users },
+  { href: '/teacher/chat',         label: 'Chat',          icon: MessageCircle },
+  { href: '/teacher/ai',           label: 'IA Pedagógica', icon: Brain },
 ];
 
-const studentNav = [
-  { href: '/student',            label: 'Dashboard' },
-  { href: '/student/rooms',      label: 'Salas' },
-  { href: '/student/tasks',      label: 'Tarefas' },
-  { href: '/student/study-log',  label: 'Diário de estudo' },
-  { href: '/student/activity',   label: 'Atividades' },
-  { href: '/student/progress',   label: 'Evolução' },
-  { href: '/student/ai',         label: 'Meu Panorama' },
+const studentNav: NavItem[] = [
+  { href: '/student',            label: 'Dashboard',        icon: LayoutDashboard },
+  { href: '/student/rooms',      label: 'Salas',            icon: DoorOpen },
+  { href: '/student/tasks',      label: 'Tarefas',          icon: ClipboardList },
+  { href: '/student/study-log',  label: 'Diário de estudo', icon: BookOpen },
+  { href: '/student/activity',   label: 'Atividades',       icon: FileText },
+  { href: '/student/progress',   label: 'Evolução',         icon: TrendingUp },
+  { href: '/student/ai',         label: 'Meu Panorama',     icon: Brain },
 ];
 
-const guardianNav = [
-  { href: '/guardian',             label: 'Dashboard' },
-  { href: '/guardian/attendance',  label: 'Frequência' },
-  { href: '/guardian/tasks',       label: 'Tarefas' },
-  { href: '/guardian/progress',    label: 'Evolução' },
-  { href: '/guardian/finance',     label: 'Financeiro' },
-  { href: '/guardian/chat',        label: 'Chat' },
-  { href: '/guardian/ai',          label: 'Panorama' },
+const guardianNav: NavItem[] = [
+  { href: '/guardian',             label: 'Dashboard',  icon: LayoutDashboard },
+  { href: '/guardian/attendance',  label: 'Frequência', icon: CheckSquare },
+  { href: '/guardian/tasks',       label: 'Tarefas',    icon: ClipboardList },
+  { href: '/guardian/progress',    label: 'Evolução',   icon: TrendingUp },
+  { href: '/guardian/finance',     label: 'Financeiro', icon: Wallet },
+  { href: '/guardian/chat',        label: 'Chat',       icon: MessageCircle },
+  { href: '/guardian/ai',          label: 'Panorama',   icon: Brain },
 ];
 
 const navByRole: Record<string, NavItem[]> = {
@@ -203,6 +209,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   const isRootItem = !href.includes('/', 1);
                   const isActive = !item.external && (pathname === href ||
                     (!isRootItem && pathname.startsWith(`${href}/`)));
+                  const Icon = item.icon;
                   if (item.external) {
                     return (
                       <a
@@ -215,6 +222,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                           group.section && 'pl-5',
                         )}
                       >
+                        {Icon && <Icon className="h-4 w-4 shrink-0" />}
                         {item.label}
                         <svg className="ml-auto h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -234,6 +242,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                           : 'text-white/70 hover:bg-white/10 hover:text-white',
                       )}
                     >
+                      {Icon && <Icon className="h-4 w-4 shrink-0" />}
                       {item.label}
                       {isActive && <div className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />}
                     </button>
