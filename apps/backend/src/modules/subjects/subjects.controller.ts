@@ -100,11 +100,16 @@ export class SubjectsController {
   }
 
   @Get('teacher-subjects')
-  @ApiOperation({ summary: 'Listar disciplinas de um professor' })
-  @ApiQuery({ name: 'teacherId', type: 'string' })
+  @ApiOperation({ summary: 'Listar vínculos professor ↔ disciplina (filtro por teacherId ou subjectId)' })
+  @ApiQuery({ name: 'teacherId', required: false, type: 'string' })
+  @ApiQuery({ name: 'subjectId', required: false, type: 'string' })
   @ApiResponse({ status: 200 })
-  findTeacherSubjects(@Req() req: any, @Query('teacherId') teacherId: string) {
-    return this.service.findTeacherSubjects(req.tenant.id, teacherId);
+  findTeacherSubjects(
+    @Req() req: any,
+    @Query('teacherId') teacherId?: string,
+    @Query('subjectId') subjectId?: string,
+  ) {
+    return this.service.findTeacherSubjects(req.tenant.id, teacherId, subjectId);
   }
 
   // ── Matrícula aluno ↔ disciplina ─────────────────────────────────────────

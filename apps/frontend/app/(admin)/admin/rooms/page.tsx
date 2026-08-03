@@ -76,6 +76,7 @@ export default function RoomsPage() {
   const [cellSubject, setCellSubject] = useState('');
   const [cellTeachers, setCellTeachers] = useState<string[]>([]);
   const [cellSaving, setCellSaving] = useState(false);
+  const [subjectTeacherIds, setSubjectTeacherIds] = useState<Set<string>>(new Set());
 
   const loadRooms = useCallback(() =>
     api.get<Room[]>('/rooms/occupancy').then(({ data }) => setRooms(data)), []);
@@ -152,11 +153,20 @@ export default function RoomsPage() {
     } finally { setLoadingSchedules(false); }
   }
 
-  function openCellEdit(dayOfWeek: number, shift: 'manhã' | 'tarde' | 'noite') {
+  async function openCellEdit(dayOfWeek: number, shift: 'manhã' | 'tarde' | 'noite') {
     const existing = roomSchedules.find((s) => s.dayOfWeek === dayOfWeek && s.shift === shift) ?? null;
     setCellEdit({ dayOfWeek, shift, existing });
-    setCellSubject(existing?.subject?.id ?? '');
     setCellTeachers(existing?.teachers.map((t) => t.teacher.id) ?? []);
+    const subjectId = existing?.subject?.id ?? '';
+    setCellSubject(subjectId);
+    if (subjectId) {
+      try {
+        const { data } = await api.get<{ id: string; teacher: Teacher }[]>(`/teacher-subjects?subjectId=${subjectId}`);
+        setSubjectTeacherIds(new Set(data.map((ts) => ts.teacher.id)));
+      } catch { setSubjectTeacherIds(new Set()); }
+    } else {
+      setSubjectTeacherIds(new Set());
+    }
   }
 
   async function handleSaveCell() {
@@ -473,7 +483,19 @@ export default function RoomsPage() {
                       <label className="mb-1 block text-xs font-medium text-gray-600">Disciplina</label>
                       <select
                         value={cellSubject}
-                        onChange={(e) => setCellSubject(e.target.value)}
+                        onChange={async (e) => {
+                          const subjectId = e.target.value;
+                          setCellSubject(subjectId);
+                          setCellTeachers([]);
+                          if (subjectId) {
+                            try {
+                              const { data } = await api.get<{ id: string; teacher: Teacher }[]>(`/teacher-subjects?subjectId=${subjectId}`);
+                              setSubjectTeacherIds(new Set(data.map((ts) => ts.teacher.id)));
+                            } catch { setSubjectTeacherIds(new Set()); }
+                          } else {
+                            setSubjectTeacherIds(new Set());
+                          }
+                        }}
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
                       >
                         <option value="">Sem disciplina</option>
@@ -482,9 +504,11 @@ export default function RoomsPage() {
                     </div>
 
                     <div className="flex-1 min-w-48">
-                      <label className="mb-1 block text-xs font-medium text-gray-600">Professores</label>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        Professores{cellSubject && subjectTeacherIds.size === 0 ? ' (nenhum vinculado a esta disciplina)' : ''}
+                      </label>
                       <div className="flex flex-wrap gap-2">
-                        {teachers.map((t) => (
+                        {(cellSubject ? teachers.filter((t) => subjectTeacherIds.has(t.id)) : teachers).map((t) => (
                           <label key={t.id} className="flex items-center gap-1.5 cursor-pointer">
                             <input
                               type="checkbox"

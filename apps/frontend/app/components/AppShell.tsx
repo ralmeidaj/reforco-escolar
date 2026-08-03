@@ -175,7 +175,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
           {navGroups.map((group, gIdx) => {
             const isCollapsed = group.section ? collapsedSections.has(group.section) : false;
             return (

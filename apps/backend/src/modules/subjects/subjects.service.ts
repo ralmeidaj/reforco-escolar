@@ -74,10 +74,13 @@ export class SubjectsService {
     await this.teacherSubjectsRepo.remove(link);
   }
 
-  findTeacherSubjects(tenantId: string, teacherId: string) {
+  findTeacherSubjects(tenantId: string, teacherId?: string, subjectId?: string) {
+    const where: Record<string, string> = { tenantId };
+    if (teacherId) where.teacherId = teacherId;
+    if (subjectId) where.subjectId = subjectId;
     return this.teacherSubjectsRepo.find({
-      where: { tenantId, teacherId },
-      relations: { subject: true },
+      where,
+      relations: { subject: true, teacher: true },
     });
   }
 
