@@ -272,7 +272,9 @@ export default function RoomsPage() {
                           className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
                         >
                           <option value="">Selecione professor...</option>
-                          {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                          {teachers
+                            .filter((t) => !r.assignments.some((a) => a.teacher.id === t.id))
+                            .map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                         <select
                           value={aForm.subjectId}

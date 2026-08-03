@@ -30,7 +30,7 @@ export function DashboardScreen() {
   const load = useCallback(() => {
     api.get('/reports/admin/kpis')
       .then(({ data }) => setData(data))
-      .catch(() => {})
+      .catch(() => setData({ activeStudents: 0, attendancePercent: 0, revenueMonth: 0, sessionsToday: 0, absencesToday: 0, lowBalanceStudents: 0 }))
       .finally(() => setLoading(false));
   }, []);
 
