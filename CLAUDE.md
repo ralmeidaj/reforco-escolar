@@ -123,6 +123,13 @@ cd apps/mobile && eas build --platform ios      # gera IPA
 - `JWT_SECRET` obrigatório em `apps/frontend/.env.local` (mesmo valor do backend)
 - Rotas públicas definidas em `PUBLIC_PATHS` no `middleware.ts` — adicionar toda nova rota pública nessa lista
 
+### AppShell e navegação
+- Sidebar com seções colapsáveis: `section: true` em `NavItem` define um cabeçalho de grupo (ex.: "CADASTROS", "OPERACIONAL") com chevron de toggle
+- Ícones via `lucide-react` — cada `NavItem` tem campo `icon?: LucideIcon`
+- Scrollbar da nav oculta visualmente (`[&::-webkit-scrollbar]:hidden`) mas scroll funcional
+- **Regra crítica:** todos os hooks (`useState`, `useMemo`, `useEffect`) devem ficar **antes** de qualquer `return` condicional — violação quebra o build (Rules of Hooks)
+- Tela de Matrículas: `/admin/enrollments` — painel esquerdo (lista de alunos) + painel direito (checkboxes por disciplina); API em `/enrollments` (não `/subjects/enrollments`)
+
 ### Route groups Next.js — atenção
 Os route groups são **organizacionais** e **não criam prefixo de URL**:
 
@@ -304,6 +311,26 @@ O `.env` fica na **raiz do monorepo**. O frontend usa `apps/frontend/.env.local`
 | 8 | Super Admin — Plataforma | `src/modules/super-admin/` |
 | 9 | IA Pedagógica | `src/modules/ai/` (panoramas, suggestions, cron, agrupamentos) |
 
+### Migrations existentes
+
+| Arquivo | Conteúdo |
+|---|---|
+| `0001_tenants_and_auth` | tenants, users, refresh_tokens |
+| `0002_subjects_groups` | subjects, groups, teacher_subjects, student_enrollments, guardian_students |
+| `0003_scheduling_rooms` | sessions, rooms, availability_slots |
+| `0004_attendance_progress` | attendances, session_notes, student_progress, tasks, study_logs, activity_submissions |
+| `0005_communication` | messages, notifications, announcements |
+| `0006_finance` | plans, student_plans, payments |
+| `0007_reports` | materialized view tenant_kpis |
+| `0008_super_admin` | super_admins, audit_logs |
+| `0009_ai_pedagogica` | ai_student_panoramas, ai_activity_suggestions |
+| `0010_invites` | invites |
+| `0011_room_checkins` | room_checkins |
+| `0012_room_teacher_subject` | índice único em teacher_subjects |
+| `0013_session_student_nullable` | student_id nullable em sessions (walk-in) |
+| `0014_room_assignments` | room_assignments (N:M professor ↔ sala) |
+| `0015_room_schedules` | room_schedules, room_schedule_teachers (grade semanal por sala) |
+
 ## Specs do produto
 
 ### Spec 1 — Tenancy + Auth (MVP)
@@ -334,7 +361,7 @@ O `.env` fica na **raiz do monorepo**. O frontend usa `apps/frontend/.env.local`
 ---
 
 ### Spec 3 — Agendamento de Aulas (MVP)
-**Tabelas:** `availability_slots`, `sessions`, `rooms`, `room_assignments`
+**Tabelas:** `availability_slots`, `sessions`, `rooms`, `room_assignments`, `room_checkins`, `room_schedules`, `room_schedule_teachers`
 
 **Funcionalidades:**
 - Professor cadastra horários disponíveis (recorrentes via `rrule` ou avulsos)
@@ -348,8 +375,9 @@ O `.env` fica na **raiz do monorepo**. O frontend usa `apps/frontend/.env.local`
 - **Balanceamento automático de check-in:** ao aluno entrar na sala, o sistema distribui para o professor com menos alunos ativos; se houver sessão pré-agendada "A definir" (sem aluno) compatível (±90 min / +30 min), ela é reaproveitada em vez de criar uma nova
 - **Troca de professor (só admin):** `PATCH /rooms/checkins/:id/reassign` permite ao admin realocar um aluno para outro professor da mesma sala como exceção
 - Turmas fixas (ex.: 5º ano, infantil) têm `room_id` fixo e não participam da alocação automática
-- Admin visualiza ocupação em tempo real por sala; kiosk resolve tenant via `?tenant=slug` ou localStorage
-- Kiosk (`/kiosk`) permite check-in pelo aluno sem autenticação, via busca por nome; configuração de escola salva no localStorage
+- **Grade de horários semanal por sala:** tabela `room_schedules` (dia da semana × turno → disciplina + professores); configurada via `GET/POST/DELETE /rooms/:id/schedules`; professores exibidos no formulário são filtrados pela disciplina selecionada (`GET /teacher-subjects?subjectId=`)
+- **Kiosk com filtro por turno:** exibe somente salas com horário cadastrado para o turno atual (Manhã 06-12h, Tarde 12-18h, Noite 18-24h); sem horário configurado para o turno, kiosk exibe "Nenhuma sala disponível"; resolve tenant via `?tenant=slug` ou localStorage
+- Admin visualiza ocupação em tempo real por sala; kiosk permite check-in pelo aluno sem autenticação via busca por nome
 
 ---
 

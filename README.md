@@ -127,6 +127,12 @@ Row-level tenancy com `tenant_id` em todas as tabelas. O tenant é identificado 
 0007_reports
 0008_super_admin
 0009_ai_pedagogica
+0010_invites
+0011_room_checkins
+0012_room_teacher_subject
+0013_session_student_nullable
+0014_room_assignments
+0015_room_schedules
 ```
 
 ## Hospedagem recomendada
