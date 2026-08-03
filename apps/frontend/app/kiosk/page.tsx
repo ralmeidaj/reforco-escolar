@@ -2,6 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
+interface Assignment {
+  id: string;
+  teacher: { id: string; name: string };
+  subject: { id: string; name: string } | null;
+}
+
 interface Room {
   id: string;
   name: string;
@@ -9,8 +15,7 @@ interface Room {
   currentOccupancy: number;
   available: number;
   isFull: boolean;
-  teacher?: { id: string; name: string } | null;
-  subject?: { id: string; name: string } | null;
+  assignments: Assignment[];
 }
 
 interface Student {
@@ -238,9 +243,11 @@ export default function KioskPage() {
                   <span className="absolute top-4 right-4 rounded-full bg-red-500/80 px-3 py-1 text-xs font-bold">LOTADA</span>
                 )}
                 <h2 className="text-2xl font-bold">{room.name}</h2>
-                {(room.subject || room.teacher) && (
+                {room.assignments?.length > 0 && (
                   <p className="mt-1 text-sm text-blue-200">
-                    {room.subject?.name}{room.subject && room.teacher ? ' · ' : ''}{room.teacher ? `Prof. ${room.teacher.name}` : ''}
+                    {room.assignments.map((a) =>
+                      [a.subject?.name, `Prof. ${a.teacher.name}`].filter(Boolean).join(' · ')
+                    ).join(' | ')}
                   </p>
                 )}
                 <div className="mt-2 flex items-baseline gap-1">

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"C:\\\\Users\\\\raimundo.araujo\\\\Documents\\\\Projetos\\\\payproxy-app\" ls-files android/)",
+      "Bash(git -C \"C:/Users/raimundo.araujo/Documents/Projetos/payproxy-app\" status --short android/)",
+      "Bash(git -C \"C:/Users/raimundo.araujo/Documents/Projetos/payproxy-app\" log --oneline --follow -- \"android/build.gradle\")",
+      "Read(//c//**)",
+      "PowerShell(Get-Process -Name \"node\" -ErrorAction SilentlyContinue | Select-Object Id, CPU, WorkingSet, MainWindowTitle, @{N=\"CommandLine\";E={\\( \\(Get-CimInstance Win32_Process -Filter \"ProcessId = $\\($_.Id\\)\"\\).CommandLine\\)}} | Format-List)",
+      "PowerShell(Stop-Process -Id 42864, 56484 -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Id 23684, 28804, 37648, 41700 -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(robocopy \"C:\\\\Users\\\\raimundo.araujo\\\\Documents\\\\Projetos\\\\Estudo\\\\reforco-escolar\" \"C:\\\\dev\\\\re\" /E /XD node_modules .git /NFL /NDL /NJH /NJS /nc /ns /np)"
+    ],
+    "additionalDirectories": [
+      "C:\\"
+    ]
+  }
+}

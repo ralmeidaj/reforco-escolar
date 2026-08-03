@@ -4,6 +4,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '@/app/lib/api';
 import { Spinner } from '@/app/components/Spinner';
 
+interface Assignment {
+  id: string;
+  teacher: { id: string; name: string };
+  subject: { id: string; name: string } | null;
+}
+
 interface RoomAvailable {
   id: string;
   name: string;
@@ -11,8 +17,7 @@ interface RoomAvailable {
   currentOccupancy: number;
   available: number;
   isFull: boolean;
-  teacher?: { id: string; name: string } | null;
-  subject?: { id: string; name: string } | null;
+  assignments: Assignment[];
 }
 
 interface ActiveCheckin {
@@ -153,11 +158,16 @@ export default function StudentRoomsPage() {
                         </span>
                       )}
                     </div>
-                    {(room.teacher || room.subject) && (
+                    {room.assignments?.length > 0 && (
                       <p className="mt-0.5 text-xs text-gray-500">
-                        {room.subject && <span className="font-medium text-brand-600">{room.subject.name}</span>}
-                        {room.subject && room.teacher && ' · '}
-                        {room.teacher && `Prof. ${room.teacher.name}`}
+                        {room.assignments.map((a, i) => (
+                          <span key={a.id}>
+                            {i > 0 && ' | '}
+                            {a.subject && <span className="font-medium text-brand-600">{a.subject.name}</span>}
+                            {a.subject && ' · '}
+                            {`Prof. ${a.teacher.name}`}
+                          </span>
+                        ))}
                       </p>
                     )}
                     <p className="mt-1 text-xs text-gray-500">

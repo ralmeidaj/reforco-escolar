@@ -296,7 +296,7 @@ O `.env` fica na **raiz do monorepo**. O frontend usa `apps/frontend/.env.local`
 |---|---|---|
 | 1 | Tenancy + Auth | `src/modules/auth/`, `src/modules/tenants/` |
 | 2 | Disciplinas, Turmas e Vínculos | `src/modules/subjects/`, `src/modules/groups/` |
-| 3 | Agendamento de Aulas | `src/modules/scheduling/` |
+| 3 | Agendamento de Aulas + Salas | `src/modules/scheduling/`, `src/modules/rooms/` |
 | 4 | Presença e Acompanhamento Pedagógico | `src/modules/attendance/`, `src/modules/progress/`, `src/modules/tasks/` |
 | 5 | Comunicação | `src/modules/communication/` (messages, notifications, announcements, cron) |
 | 6 | Financeiro | `src/modules/finance/` (plans, student-plans, payments) |
@@ -334,19 +334,22 @@ O `.env` fica na **raiz do monorepo**. O frontend usa `apps/frontend/.env.local`
 ---
 
 ### Spec 3 — Agendamento de Aulas (MVP)
-**Tabelas:** `availability_slots`, `sessions`, `rooms`
+**Tabelas:** `availability_slots`, `sessions`, `rooms`, `room_assignments`
 
 **Funcionalidades:**
 - Professor cadastra horários disponíveis (recorrentes via `rrule` ou avulsos)
-- Agendamento pelo admin ou responsável
+- Agendamento pelo admin ou responsável; campo `student_id` é opcional ("A definir" — modelo walk-in)
 - Status da sessão: `agendada` → `confirmada` → `realizada` / `cancelada`
 - Canal: presencial ou online (link Meet)
 - Vista de calendário semanal e mensal
 - Cancelamento com motivo + notificação automática
 - CRUD de salas com capacidade máxima por tenant
-- Alocação automática de aluno em sala disponível ao registrar presença (menor ocupação primeiro)
+- **Múltiplos professores por sala:** tabela `room_assignments` (N:M) — cada sala pode ter vários professores, cada um com uma disciplina opcional
+- **Balanceamento automático de check-in:** ao aluno entrar na sala, o sistema distribui para o professor com menos alunos ativos; se houver sessão pré-agendada "A definir" (sem aluno) compatível (±90 min / +30 min), ela é reaproveitada em vez de criar uma nova
+- **Troca de professor (só admin):** `PATCH /rooms/checkins/:id/reassign` permite ao admin realocar um aluno para outro professor da mesma sala como exceção
 - Turmas fixas (ex.: 5º ano, infantil) têm `room_id` fixo e não participam da alocação automática
-- Admin visualiza ocupação em tempo real por sala
+- Admin visualiza ocupação em tempo real por sala; kiosk resolve tenant via `?tenant=slug` ou localStorage
+- Kiosk (`/kiosk`) permite check-in pelo aluno sem autenticação, via busca por nome; configuração de escola salva no localStorage
 
 ---
 

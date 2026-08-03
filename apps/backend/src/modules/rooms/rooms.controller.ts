@@ -20,6 +20,8 @@ import {
 import { RoomsService } from './rooms.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
+import { CreateRoomAssignmentDto } from './dto/create-room-assignment.dto';
+import { ReassignStudentDto } from './dto/reassign-student.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('Rooms')
@@ -126,5 +128,46 @@ export class RoomsController {
   @ApiResponse({ status: 200 })
   remove(@Req() req: any, @Param('id') id: string) {
     return this.roomsService.remove(req.tenant.id, id);
+  }
+
+  // ── Assignments ──────────────────────────────────────────────────────────────
+
+  @Post(':id/assignments')
+  @Roles('tenant_admin')
+  @ApiOperation({ summary: 'Adicionar professor/disciplina à sala' })
+  @ApiParam({ name: 'id', type: 'string' })
+  @ApiResponse({ status: 201 })
+  addAssignment(@Req() req: any, @Param('id') id: string, @Body() dto: CreateRoomAssignmentDto) {
+    return this.roomsService.addAssignment(req.tenant.id, id, dto);
+  }
+
+  @Delete(':id/assignments/:assignmentId')
+  @Roles('tenant_admin')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remover professor/disciplina da sala' })
+  @ApiParam({ name: 'id', type: 'string' })
+  @ApiParam({ name: 'assignmentId', type: 'string' })
+  @ApiResponse({ status: 204 })
+  removeAssignment(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Param('assignmentId') assignmentId: string,
+  ) {
+    return this.roomsService.removeAssignment(req.tenant.id, id, assignmentId);
+  }
+
+  // ── Reassign ─────────────────────────────────────────────────────────────────
+
+  @Patch('checkins/:checkinId/reassign')
+  @Roles('tenant_admin')
+  @ApiOperation({ summary: 'Trocar professor de um aluno em check-in (admin)' })
+  @ApiParam({ name: 'checkinId', type: 'string' })
+  @ApiResponse({ status: 200 })
+  reassignStudent(
+    @Req() req: any,
+    @Param('checkinId') checkinId: string,
+    @Body() dto: ReassignStudentDto,
+  ) {
+    return this.roomsService.reassignStudent(req.tenant.id, checkinId, dto.assignmentId);
   }
 }

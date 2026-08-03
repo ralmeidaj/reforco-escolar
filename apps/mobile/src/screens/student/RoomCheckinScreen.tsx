@@ -3,6 +3,12 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Ale
 import { api } from '../../../lib/api';
 import { Card, SkeletonCard, EmptyState, colors } from '../../../components/ui';
 
+interface Assignment {
+  id: string;
+  teacher: { id: string; name: string };
+  subject: { id: string; name: string } | null;
+}
+
 interface RoomAvailable {
   id: string;
   name: string;
@@ -10,8 +16,7 @@ interface RoomAvailable {
   currentOccupancy: number;
   available: number;
   isFull: boolean;
-  teacher?: { id: string; name: string } | null;
-  subject?: { id: string; name: string } | null;
+  assignments: Assignment[];
 }
 
 interface ActiveCheckin {
@@ -148,13 +153,16 @@ export function RoomCheckinScreen() {
                 const isMyRoom = activeCheckin?.roomId === room.id;
                 const isLoading = checkingIn === room.id;
                 return (
-                  <Card key={room.id} style={[s.roomCard, isMyRoom && s.myRoom]}>
+                  <Card key={room.id} style={[s.roomCard, isMyRoom ? s.myRoom : undefined] as any}>
                     <View style={s.roomTop}>
                       <View style={{ flex: 1 }}>
                         <Text style={s.roomName}>{room.name}</Text>
-                        {(room.subject || room.teacher) && (
+                        {room.assignments?.length > 0 && (
                           <Text style={s.roomMeta}>
-                            {room.subject?.name}{room.subject && room.teacher ? ' · ' : ''}{room.teacher ? `Prof. ${room.teacher.name}` : ''}
+                            {room.assignments.map((a, i) =>
+                              (i > 0 ? ' | ' : '') +
+                              [a.subject?.name, `Prof. ${a.teacher.name}`].filter(Boolean).join(' · ')
+                            ).join('')}
                           </Text>
                         )}
                       </View>

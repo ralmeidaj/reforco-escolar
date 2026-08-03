@@ -3,14 +3,14 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany,
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Tenant } from '../tenants/tenant.entity';
 import { Group } from '../groups/group.entity';
-import { User } from '../auth/user.entity';
-import { Subject } from '../subjects/subject.entity';
+import { RoomAssignment } from './room-assignment.entity';
 
 @Entity('rooms')
 export class Room {
@@ -37,19 +37,8 @@ export class Room {
   @JoinColumn({ name: 'fixed_group_id' })
   fixedGroup: Group | null;
 
-  @Column({ name: 'teacher_id', nullable: true, type: 'uuid' })
-  teacherId: string | null;
-
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'teacher_id' })
-  teacher: User | null;
-
-  @Column({ name: 'subject_id', nullable: true, type: 'uuid' })
-  subjectId: string | null;
-
-  @ManyToOne(() => Subject, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'subject_id' })
-  subject: Subject | null;
+  @OneToMany(() => RoomAssignment, (a) => a.room, { cascade: true })
+  assignments: RoomAssignment[];
 
   @CreateDateColumn()
   createdAt: Date;
