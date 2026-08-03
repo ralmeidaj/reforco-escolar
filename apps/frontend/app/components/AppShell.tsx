@@ -10,14 +10,16 @@ import { Spinner } from '@/app/components/Spinner';
 import { NotificationBell } from '@/app/components/NotificationBell';
 
 interface Me { name: string; email: string; role: string }
-interface NavItem { href: string; label: string; external?: boolean }
+interface NavItem { href?: string; label: string; external?: boolean; section?: boolean }
 
-const adminNav = [
+const adminNav: NavItem[] = [
   { href: '/admin',              label: 'Dashboard' },
+  { section: true,               label: 'Cadastros' },
   { href: '/admin/users',        label: 'Usuários' },
   { href: '/admin/subjects',     label: 'Disciplinas' },
   { href: '/admin/groups',       label: 'Turmas' },
   { href: '/admin/enrollments',  label: 'Matrículas' },
+  { section: true,               label: 'Operacional' },
   { href: '/admin/schedule',     label: 'Agendamento' },
   { href: '/admin/rooms',        label: 'Salas' },
   { href: '/kiosk',              label: 'Kiosk', external: true },
@@ -149,16 +151,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2">
-          {navItems.map((item) => {
-            const isRootItem = !item.href.includes('/', 1);
-            const isActive = !item.external && (pathname === item.href ||
-              (!isRootItem && pathname.startsWith(`${item.href}/`)));
+        <nav className="flex-1 overflow-y-auto px-3 py-2">
+          {navItems.map((item, idx) => {
+            if (item.section) {
+              return (
+                <p key={`section-${idx}`} className="mt-4 mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-white/40 first:mt-1">
+                  {item.label}
+                </p>
+              );
+            }
+            const href = item.href!;
+            const isRootItem = !href.includes('/', 1);
+            const isActive = !item.external && (pathname === href ||
+              (!isRootItem && pathname.startsWith(`${href}/`)));
             if (item.external) {
               return (
                 <a
-                  key={item.href}
-                  href={item.href}
+                  key={href}
+                  href={href}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-all duration-150"
@@ -172,8 +182,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             }
             return (
               <button
-                key={item.href}
-                onClick={() => navigate(item.href)}
+                key={href}
+                onClick={() => navigate(href)}
                 className={cn(
                   'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
                   isActive
