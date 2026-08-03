@@ -17,6 +17,7 @@ const adminNav = [
   { href: '/admin/users',        label: 'Usuários' },
   { href: '/admin/subjects',     label: 'Disciplinas' },
   { href: '/admin/groups',       label: 'Turmas' },
+  { href: '/admin/enrollments',  label: 'Matrículas' },
   { href: '/admin/schedule',     label: 'Agendamento' },
   { href: '/admin/rooms',        label: 'Salas' },
   { href: '/kiosk',              label: 'Kiosk', external: true },
