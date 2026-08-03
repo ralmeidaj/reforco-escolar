@@ -21,7 +21,8 @@ export default function EnrollmentsPage() {
   const [loadingEnroll, setLoadingEnroll] = useState(false);
 
   // subjectId → loading state (para feedback individual por checkbox)
-  const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const [busy, setBusy]       = useState<Record<string, boolean>>({});
+  const [toggleError, setToggleError] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -58,6 +59,7 @@ export default function EnrollmentsPage() {
 
   async function toggleEnrollment(subject: Subject) {
     if (!selected) return;
+    setToggleError('');
     setBusy((b) => ({ ...b, [subject.id]: true }));
     try {
       const existing = enrollments.find((e) => e.subject.id === subject.id);
@@ -70,6 +72,8 @@ export default function EnrollmentsPage() {
         });
       }
       await reloadEnrollments(selected.id);
+    } catch (err: any) {
+      setToggleError(err.response?.data?.message ?? err.message ?? 'Erro ao atualizar matrícula');
     } finally {
       setBusy((b) => ({ ...b, [subject.id]: false }));
     }
@@ -169,6 +173,12 @@ export default function EnrollmentsPage() {
                   {enrolledCount} {enrolledCount === 1 ? 'disciplina' : 'disciplinas'} matriculada{enrolledCount !== 1 ? 's' : ''}
                 </span>
               </div>
+
+              {toggleError && (
+                <div className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">
+                  {toggleError}
+                </div>
+              )}
 
               {loadingEnroll ? (
                 <div className="space-y-3">
