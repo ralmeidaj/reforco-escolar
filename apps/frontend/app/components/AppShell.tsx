@@ -103,31 +103,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setNavigatingTo(null);
   }, [pathname]);
 
-  function navigate(href: string) {
-    if (pathname === href) return;
-    setNavigatingTo(href);
-    router.push(href);
-  }
-
-  async function logout() {
-    setLoggingOut(true);
-    try { await api.post('/auth/logout'); } catch {}
-    router.push('/login');
-  }
-
-  if (!meLoaded) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-200 border-t-brand-600" />
-      </div>
-    );
-  }
-
   const role = me?.role ?? 'student';
   const navItems = navByRole[role] ?? studentNav;
   const badge = roleBadge[role];
 
-  // Agrupa navItems em seções [{ section?: string, items: NavItem[] }]
+  // useMemo deve ficar antes de qualquer return condicional (Rules of Hooks)
   type NavGroup = { section?: string; items: NavItem[] };
   const navGroups = useMemo<NavGroup[]>(() => {
     const groups: NavGroup[] = [];
@@ -142,12 +122,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return groups;
   }, [navItems]);
 
+  function navigate(href: string) {
+    if (pathname === href) return;
+    setNavigatingTo(href);
+    router.push(href);
+  }
+
+  async function logout() {
+    setLoggingOut(true);
+    try { await api.post('/auth/logout'); } catch {}
+    router.push('/login');
+  }
+
   function toggleSection(label: string) {
     setCollapsedSections((prev) => {
       const next = new Set(prev);
       if (next.has(label)) next.delete(label); else next.add(label);
       return next;
     });
+  }
+
+  if (!meLoaded) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-200 border-t-brand-600" />
+      </div>
+    );
   }
 
   return (
