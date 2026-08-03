@@ -3,7 +3,7 @@
 import { LOGO_DATA_URI } from '@/app/lib/logo';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/app/lib/utils';
 import { api } from '@/app/lib/api';
 import { Spinner } from '@/app/components/Spinner';
@@ -89,6 +89,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     api.get<Me>('/auth/me')
@@ -126,6 +127,29 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const navItems = navByRole[role] ?? studentNav;
   const badge = roleBadge[role];
 
+  // Agrupa navItems em seções [{ section?: string, items: NavItem[] }]
+  type NavGroup = { section?: string; items: NavItem[] };
+  const navGroups = useMemo<NavGroup[]>(() => {
+    const groups: NavGroup[] = [];
+    for (const item of navItems) {
+      if (item.section) {
+        groups.push({ section: item.label, items: [] });
+      } else {
+        if (groups.length === 0) groups.push({ items: [] });
+        groups[groups.length - 1].items.push(item);
+      }
+    }
+    return groups;
+  }, [navItems]);
+
+  function toggleSection(label: string) {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      return next;
+    });
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-100">
       {sidebarOpen && (
@@ -151,49 +175,71 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-3 py-2">
-          {navItems.map((item, idx) => {
-            if (item.section) {
-              return (
-                <p key={`section-${idx}`} className="mt-4 mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-white/40 first:mt-1">
-                  {item.label}
-                </p>
-              );
-            }
-            const href = item.href!;
-            const isRootItem = !href.includes('/', 1);
-            const isActive = !item.external && (pathname === href ||
-              (!isRootItem && pathname.startsWith(`${href}/`)));
-            if (item.external) {
-              return (
-                <a
-                  key={href}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-all duration-150"
-                >
-                  {item.label}
-                  <svg className="ml-auto h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              );
-            }
+        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
+          {navGroups.map((group, gIdx) => {
+            const isCollapsed = group.section ? collapsedSections.has(group.section) : false;
             return (
-              <button
-                key={href}
-                onClick={() => navigate(href)}
-                className={cn(
-                  'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
-                  isActive
-                    ? 'bg-white/20 text-white shadow-sm backdrop-blur-sm'
-                    : 'text-white/70 hover:bg-white/10 hover:text-white',
+              <div key={gIdx}>
+                {/* Cabeçalho de seção colapsável */}
+                {group.section && (
+                  <button
+                    onClick={() => toggleSection(group.section!)}
+                    className="flex w-full items-center justify-between px-3 py-1.5 mt-3 first:mt-0"
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">
+                      {group.section}
+                    </span>
+                    <svg
+                      className={cn('h-3 w-3 text-white/30 transition-transform duration-200', isCollapsed && '-rotate-90')}
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
                 )}
-              >
-                {item.label}
-                {isActive && <div className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />}
-              </button>
+                {/* Itens do grupo */}
+                {!isCollapsed && group.items.map((item) => {
+                  const href = item.href!;
+                  const isRootItem = !href.includes('/', 1);
+                  const isActive = !item.external && (pathname === href ||
+                    (!isRootItem && pathname.startsWith(`${href}/`)));
+                  if (item.external) {
+                    return (
+                      <a
+                        key={href}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-all duration-150',
+                          group.section && 'pl-5',
+                        )}
+                      >
+                        {item.label}
+                        <svg className="ml-auto h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    );
+                  }
+                  return (
+                    <button
+                      key={href}
+                      onClick={() => navigate(href)}
+                      className={cn(
+                        'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
+                        group.section && 'pl-5',
+                        isActive
+                          ? 'bg-white/20 text-white shadow-sm backdrop-blur-sm'
+                          : 'text-white/70 hover:bg-white/10 hover:text-white',
+                      )}
+                    >
+                      {item.label}
+                      {isActive && <div className="ml-auto h-1.5 w-1.5 rounded-full bg-white" />}
+                    </button>
+                  );
+                })}
+              </div>
             );
           })}
         </nav>

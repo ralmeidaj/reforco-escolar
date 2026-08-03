@@ -40,7 +40,7 @@ export default function EnrollmentsPage() {
     setLoadingEnroll(true);
     setEnrollments([]);
     try {
-      const { data } = await api.get<Enrollment[]>(`/subjects/enrollments?studentId=${student.id}`);
+      const { data } = await api.get<Enrollment[]>(`/enrollments?studentId=${student.id}`);
       setEnrollments(data);
     } finally {
       setLoadingEnroll(false);
@@ -53,7 +53,7 @@ export default function EnrollmentsPage() {
   }
 
   async function reloadEnrollments(studentId: string) {
-    const { data } = await api.get<Enrollment[]>(`/subjects/enrollments?studentId=${studentId}`);
+    const { data } = await api.get<Enrollment[]>(`/enrollments?studentId=${studentId}`);
     setEnrollments(data);
   }
 
@@ -64,9 +64,9 @@ export default function EnrollmentsPage() {
     try {
       const existing = enrollments.find((e) => e.subject.id === subject.id);
       if (existing) {
-        await api.delete(`/subjects/enrollments/${existing.id}`);
+        await api.delete(`/enrollments/${existing.id}`);
       } else {
-        await api.post('/subjects/enrollments', {
+        await api.post('/enrollments', {
           studentId: selected.id,
           subjectId: subject.id,
         });
