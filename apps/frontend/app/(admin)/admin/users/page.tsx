@@ -28,16 +28,21 @@ const TAB_INVITE_ROLE: Record<Tab, string> = {
   guardians: 'guardian',
 };
 
+interface TeacherSubjectLink { id: string; subject: Subject }
+
 export default function UsersPage() {
   const [tab, setTab] = useState<Tab>('teachers');
   const [users, setUsers] = useState<User[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
+  // mapa teacherId → disciplinas já vinculadas
+  const [linkedMap, setLinkedMap] = useState<Record<string, TeacherSubjectLink[]>>({});
 
   // Modal de vínculo professor ↔ disciplina
   const [linkModal, setLinkModal] = useState<{ teacher: User } | null>(null);
   const [selectedSubject, setSelectedSubject] = useState('');
   const [linking, setLinking] = useState(false);
+  const [linkError, setLinkError] = useState('');
 
   // Modal de convite
   const [inviteModal, setInviteModal] = useState(false);
@@ -52,8 +57,20 @@ export default function UsersPage() {
   const [registering, setRegistering] = useState(false);
   const [registerError, setRegisterError] = useState('');
 
+  async function loadTeacherSubjects(teachers: User[]) {
+    const entries = await Promise.all(
+      teachers.map((t) =>
+        api.get<TeacherSubjectLink[]>(`/teacher-subjects?teacherId=${t.id}`)
+          .then(({ data }) => [t.id, data] as const)
+          .catch(() => [t.id, []] as const),
+      ),
+    );
+    setLinkedMap(Object.fromEntries(entries));
+  }
+
   useEffect(() => {
     setLoading(true);
+    setLinkedMap({});
     Promise.all([
       api.get<User[]>(`/auth/users?role=${TAB_ROLES[tab]}`),
       api.get<Subject[]>('/subjects'),
@@ -61,23 +78,47 @@ export default function UsersPage() {
       .then(([usersRes, subjectsRes]) => {
         setUsers(usersRes.data);
         setSubjects(subjectsRes.data);
+        if (tab === 'teachers') loadTeacherSubjects(usersRes.data);
       })
       .finally(() => setLoading(false));
   }, [tab]);
 
   async function handleLink() {
     if (!linkModal || !selectedSubject) return;
+    setLinkError('');
     setLinking(true);
     try {
       await api.post('/teacher-subjects', {
         teacherId: linkModal.teacher.id,
         subjectId: selectedSubject,
       });
+      // atualiza o mapa local sem recarregar tudo
+      const newLink: TeacherSubjectLink = {
+        id: '',
+        subject: subjects.find((s) => s.id === selectedSubject)!,
+      };
+      setLinkedMap((prev) => ({
+        ...prev,
+        [linkModal.teacher.id]: [...(prev[linkModal.teacher.id] ?? []), newLink],
+      }));
       setLinkModal(null);
       setSelectedSubject('');
+    } catch (err: any) {
+      const msg = err.response?.data?.message ?? 'Erro ao vincular disciplina';
+      setLinkError(Array.isArray(msg) ? msg.join(', ') : msg);
     } finally {
       setLinking(false);
     }
+  }
+
+  async function handleUnlink(teacherId: string, linkId: string) {
+    try {
+      await api.delete(`/teacher-subjects/${linkId}`);
+      setLinkedMap((prev) => ({
+        ...prev,
+        [teacherId]: (prev[teacherId] ?? []).filter((l) => l.id !== linkId),
+      }));
+    } catch {}
   }
 
   async function handleInvite(e: React.FormEvent) {
@@ -182,19 +223,35 @@ export default function UsersPage() {
         ) : (
           <ul className="divide-y divide-gray-100">
             {users.map((u) => (
-              <li key={u.id} className="flex items-center justify-between px-5 py-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{u.name}</p>
-                  <p className="text-xs text-gray-500">{u.email}</p>
+              <li key={u.id} className="px-5 py-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900">{u.name}</p>
+                    <p className="text-xs text-gray-500">{u.email}</p>
+                    {tab === 'teachers' && (linkedMap[u.id] ?? []).length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {(linkedMap[u.id] ?? []).map((l) => (
+                          <span key={l.id} className="inline-flex items-center gap-1 rounded-full bg-brand-50 border border-brand-200 px-2 py-0.5 text-xs text-brand-700">
+                            {l.subject.name}
+                            <button
+                              onClick={() => handleUnlink(u.id, l.id)}
+                              className="ml-0.5 text-brand-400 hover:text-red-500 font-bold leading-none"
+                              title="Remover vínculo"
+                            >×</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {tab === 'teachers' && (
+                    <button
+                      onClick={() => { setLinkModal({ teacher: u }); setLinkError(''); setSelectedSubject(''); }}
+                      className="shrink-0 rounded-lg border border-brand-200 px-3 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50"
+                    >
+                      + Disciplina
+                    </button>
+                  )}
                 </div>
-                {tab === 'teachers' && (
-                  <button
-                    onClick={() => setLinkModal({ teacher: u })}
-                    className="rounded-lg border border-brand-200 px-3 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50"
-                  >
-                    Vincular disciplina
-                  </button>
-                )}
               </li>
             ))}
           </ul>
@@ -336,16 +393,27 @@ export default function UsersPage() {
             <h3 className="text-base font-semibold text-gray-900">
               Vincular disciplina — {linkModal.teacher.name}
             </h3>
-            <select
-              value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
-              className="mt-4 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-            >
-              <option value="">Selecione uma disciplina</option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+            {linkError && (
+              <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{linkError}</div>
+            )}
+            {(() => {
+              const alreadyLinked = (linkedMap[linkModal.teacher.id] ?? []).map((l) => l.subject.id);
+              const available = subjects.filter((s) => !alreadyLinked.includes(s.id));
+              return available.length === 0 ? (
+                <p className="mt-4 text-sm text-gray-500">Todas as disciplinas já estão vinculadas a este professor.</p>
+              ) : (
+                <select
+                  value={selectedSubject}
+                  onChange={(e) => setSelectedSubject(e.target.value)}
+                  className="mt-4 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                >
+                  <option value="">Selecione uma disciplina</option>
+                  {available.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              );
+            })()}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={() => setLinkModal(null)}
