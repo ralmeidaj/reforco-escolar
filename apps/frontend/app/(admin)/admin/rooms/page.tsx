@@ -49,6 +49,7 @@ export default function RoomsPage() {
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [aForm, setAForm] = useState({ teacherId: '', subjectId: '' });
   const [aSaving, setASaving] = useState(false);
+  const [teacherSubjects, setTeacherSubjects] = useState<Subject[]>([]);
 
   // reassign modal
   const [reassigning, setReassigning] = useState<ActiveCheckin | null>(null);
@@ -268,7 +269,18 @@ export default function RoomsPage() {
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <select
                           value={aForm.teacherId}
-                          onChange={(e) => setAForm((p) => ({ ...p, teacherId: e.target.value }))}
+                          onChange={async (e) => {
+                            const teacherId = e.target.value;
+                            setAForm({ teacherId, subjectId: '' });
+                            setTeacherSubjects([]);
+                            if (!teacherId) return;
+                            try {
+                              const { data } = await api.get<{ id: string; subject: Subject }[]>(`/teacher-subjects?teacherId=${teacherId}`);
+                              const subs = data.map((ts) => ts.subject);
+                              setTeacherSubjects(subs);
+                              if (subs.length === 1) setAForm({ teacherId, subjectId: subs[0].id });
+                            } catch {}
+                          }}
                           className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
                         >
                           <option value="">Selecione professor...</option>
@@ -276,14 +288,18 @@ export default function RoomsPage() {
                             .filter((t) => !r.assignments.some((a) => a.teacher.id === t.id))
                             .map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
-                        <select
-                          value={aForm.subjectId}
-                          onChange={(e) => setAForm((p) => ({ ...p, subjectId: e.target.value }))}
-                          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
-                        >
-                          <option value="">Disciplina (opcional)</option>
-                          {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
+                        {aForm.teacherId && (
+                          <select
+                            value={aForm.subjectId}
+                            onChange={(e) => setAForm((p) => ({ ...p, subjectId: e.target.value }))}
+                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
+                          >
+                            <option value="">Disciplina (opcional)</option>
+                            {(teacherSubjects.length > 0 ? teacherSubjects : subjects).map((s) => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        )}
                         <button
                           onClick={() => handleAddAssignment(r.id)}
                           disabled={!aForm.teacherId || aSaving}
