@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { getAccessToken, getUser, clearAuth } from '../../lib/auth';
 import { setSessionExpiredHandler } from '../../lib/api';
-import { AppSplashScreen, colors } from '../../../components/ui';
+import { AppSplashScreen, colors } from '../../components/ui';
 import { AuthNavigator } from './AuthNavigator';
 import { StudentNavigator } from './StudentNavigator';
 import { GuardianNavigator } from './GuardianNavigator';
