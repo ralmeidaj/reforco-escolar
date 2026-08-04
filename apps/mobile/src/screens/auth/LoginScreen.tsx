@@ -8,7 +8,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { saveTenantSlug, saveTokens, saveUser } from '../../../lib/auth';
 import { useAuth, UserRole } from '../../navigation/RootNavigator';
-import { AppLogo } from '../../../../components/ui';
+import { AppLogo } from '../../../components/ui';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
