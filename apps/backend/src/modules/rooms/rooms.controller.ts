@@ -206,4 +206,14 @@ export class RoomsController {
   ) {
     return this.roomsService.reassignStudent(req.tenant.id, checkinId, dto.assignmentId);
   }
+
+  @Delete('checkins/:checkinId')
+  @Roles('tenant_admin')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Encerrar check-in de um aluno (admin)' })
+  @ApiParam({ name: 'checkinId', type: 'string' })
+  @ApiResponse({ status: 204 })
+  adminCheckout(@Req() req: any, @Param('checkinId') checkinId: string) {
+    return this.roomsService.adminCheckout(req.tenant.id, checkinId);
+  }
 }

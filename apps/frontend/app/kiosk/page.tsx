@@ -167,7 +167,7 @@ export default function KioskPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-sky-700 text-white flex items-center justify-center p-6">
         <div className="w-full max-w-sm text-center">
-          <div className="text-6xl mb-6">🏫</div>
+          <img src="/logo.png" alt="Reforços Escolares" className="h-16 w-auto object-contain mx-auto mb-6" />
           <h1 className="text-3xl font-black mb-2">Kiosk</h1>
           <p className="text-blue-200 mb-8 text-sm">Digite o identificador da sua escola para continuar</p>
           <form onSubmit={(e) => {
@@ -204,9 +204,13 @@ export default function KioskPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-sky-700 text-white">
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-5 border-b border-white/10">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight">Escolha sua sala</h1>
-          <p className="mt-0.5 text-blue-200 text-sm">Toque em uma sala para registrar sua chegada</p>
+        <div className="flex items-center gap-6">
+          <img src="/logo.png" alt="Reforços Escolares" className="h-10 w-auto object-contain" />
+          <div className="w-px h-8 bg-white/20" />
+          <div>
+            <h1 className="text-3xl font-black tracking-tight">Escolha sua sala</h1>
+            <p className="mt-0.5 text-blue-200 text-sm">Toque em uma sala para registrar sua chegada</p>
+          </div>
         </div>
         <div className="text-right text-sm text-blue-200">
           <Clock />

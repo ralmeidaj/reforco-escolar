@@ -299,6 +299,13 @@ export class RoomsService {
     );
   }
 
+  async adminCheckout(tenantId: string, checkinId: string) {
+    await this.checkinsRepo.update(
+      { tenantId, id: checkinId, checkoutAt: IsNull() },
+      { checkoutAt: new Date() },
+    );
+  }
+
   async getMyCheckin(tenantId: string, studentId: string) {
     const checkin = await this.checkinsRepo.findOne({
       where: { tenantId, studentId, checkoutAt: IsNull() },

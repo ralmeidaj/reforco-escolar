@@ -204,7 +204,7 @@ export default function RoomsPage() {
       {/* Alunos em check-in ativo */}
       {checkins.length > 0 && (
         <div className="rounded-2xl bg-blue-50 border border-blue-100 p-5 space-y-3">
-          <h2 className="text-sm font-semibold text-blue-800">Alunos na escola agora</h2>
+          <h2 className="text-sm font-semibold text-blue-800">Alunos no reforço agora</h2>
           <ul className="space-y-2">
             {checkins.map((c) => (
               <li key={c.checkinId} className="flex items-center justify-between gap-3 rounded-xl bg-white px-4 py-2.5">
@@ -215,12 +215,24 @@ export default function RoomsPage() {
                     {new Date(c.checkinAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
-                <button
-                  onClick={() => { setReassigning(c); setNewAssignmentId(''); }}
-                  className="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                >
-                  Trocar professor
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => { setReassigning(c); setNewAssignmentId(''); }}
+                    className="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                  >
+                    Trocar professor
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await api.delete(`/rooms/checkins/${c.checkinId}`);
+                      await loadCheckins();
+                      await loadRooms();
+                    }}
+                    className="rounded-lg border border-red-200 px-3 py-1 text-xs font-medium text-red-500 hover:bg-red-50"
+                  >
+                    Encerrar
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
