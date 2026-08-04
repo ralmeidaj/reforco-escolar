@@ -6,13 +6,11 @@ import { cn } from '@/app/lib/utils';
 
 interface Student    { id: string; name: string; email: string }
 interface Subject    { id: string; name: string; color: string }
-interface Group      { id: string; name: string; level: string }
-interface Enrollment { id: string; subject: Subject; group: Group | null }
+interface Enrollment { id: string; subject: Subject }
 
 export default function EnrollmentsPage() {
   const [students, setStudents]   = useState<Student[]>([]);
   const [subjects, setSubjects]   = useState<Subject[]>([]);
-  const [groups, setGroups]       = useState<Group[]>([]);
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState('');
 
@@ -28,11 +26,9 @@ export default function EnrollmentsPage() {
     Promise.all([
       api.get<Student[]>('/auth/users?role=student'),
       api.get<Subject[]>('/subjects'),
-      api.get<Group[]>('/groups'),
-    ]).then(([s, sub, g]) => {
+    ]).then(([s, sub]) => {
       setStudents(s.data);
       setSubjects(sub.data);
-      setGroups(g.data);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -71,22 +67,6 @@ export default function EnrollmentsPage() {
       setToggleError(err.response?.data?.message ?? err.message ?? 'Erro ao atualizar matrícula');
     } finally {
       setBusy((b) => ({ ...b, [subject.id]: false }));
-    }
-  }
-
-  async function changeGroup(enrollment: Enrollment, groupId: string) {
-    if (!selected) return;
-    setBusy((b) => ({ ...b, [enrollment.subject.id]: true }));
-    try {
-      await api.delete(`/subjects/enrollments/${enrollment.id}`);
-      await api.post('/subjects/enrollments', {
-        studentId: selected.id,
-        subjectId: enrollment.subject.id,
-        groupId: groupId || undefined,
-      });
-      await reloadEnrollments(selected.id);
-    } finally {
-      setBusy((b) => ({ ...b, [enrollment.subject.id]: false }));
     }
   }
 
@@ -213,7 +193,6 @@ export default function EnrollmentsPage() {
                           isEnrolled ? 'border-brand-200 bg-brand-50' : 'border-gray-100 bg-gray-50 hover:border-gray-200',
                         )}
                       >
-                        {/* Checkbox */}
                         <label className="flex cursor-pointer items-center gap-3 flex-1">
                           <input
                             type="checkbox"
@@ -233,21 +212,6 @@ export default function EnrollmentsPage() {
                             <span className="ml-1 h-3.5 w-3.5 animate-spin rounded-full border-2 border-brand-300 border-t-brand-600" />
                           )}
                         </label>
-
-                        {/* Seletor de turma — só aparece se matriculado */}
-                        {isEnrolled && (
-                          <select
-                            value={enrollment.group?.id ?? ''}
-                            disabled={isBusy}
-                            onChange={(e) => changeGroup(enrollment, e.target.value)}
-                            className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-600 focus:border-brand-400 focus:outline-none disabled:opacity-60"
-                          >
-                            <option value="">Sem turma</option>
-                            {groups.map((g) => (
-                              <option key={g.id} value={g.id}>{g.name} — {g.level}</option>
-                            ))}
-                          </select>
-                        )}
                       </div>
                     );
                   })}
