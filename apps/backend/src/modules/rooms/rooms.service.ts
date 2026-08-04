@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, ILike, IsNull, Repository } from 'typeorm';
 import { Room } from './room.entity';
@@ -16,6 +17,7 @@ import { UpsertRoomScheduleDto } from './dto/upsert-room-schedule.dto';
 
 @Injectable()
 export class RoomsService {
+  private readonly logger = new Logger(RoomsService.name);
   constructor(
     @InjectRepository(Room)
     private roomsRepo: Repository<Room>,
@@ -304,6 +306,20 @@ export class RoomsService {
       { tenantId, id: checkinId, checkoutAt: IsNull() },
       { checkoutAt: new Date() },
     );
+  }
+
+  // Encerra todos os check-ins em aberto ao fim de cada turno
+  // Manhã termina às 12h, Tarde às 18h, Noite à meia-noite
+  @Cron('0 0 12 * * *') async closeShiftManha()  { await this.closeOpenCheckins(); }
+  @Cron('0 0 18 * * *') async closeShiftTarde()  { await this.closeOpenCheckins(); }
+  @Cron('0 0 0  * * *') async closeShiftNoite()  { await this.closeOpenCheckins(); }
+
+  private async closeOpenCheckins() {
+    const result = await this.checkinsRepo.update(
+      { checkoutAt: IsNull() },
+      { checkoutAt: new Date() },
+    );
+    this.logger.log(`Checkout automático ao fim do turno: ${result.affected ?? 0} check-in(s) encerrado(s)`);
   }
 
   async getMyCheckin(tenantId: string, studentId: string) {
