@@ -8,6 +8,7 @@ import { ProgressScreen } from '../screens/guardian/ProgressScreen';
 import { FinanceScreen } from '../screens/guardian/FinanceScreen';
 import { ChatScreen } from '../screens/guardian/ChatScreen';
 import { NotificationsScreen } from '../screens/guardian/NotificationsScreen';
+import { ProfileScreen } from '../screens/shared/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -21,6 +22,7 @@ const ICONS: Record<string, [IoniconName, IoniconName]> = {
   Financeiro: ['card-outline',           'card'],
   Chat:       ['chatbubbles-outline',    'chatbubbles'],
   Avisos:     ['notifications-outline',  'notifications'],
+  Perfil:     ['person-circle-outline',  'person-circle'],
 };
 
 export function GuardianNavigator() {
@@ -41,6 +43,7 @@ export function GuardianNavigator() {
       <Tab.Screen name="Financeiro" component={FinanceScreen} />
       <Tab.Screen name="Chat"       component={ChatScreen} />
       <Tab.Screen name="Avisos"     component={NotificationsScreen} />
+      <Tab.Screen name="Perfil"     component={ProfileScreen} />
     </Tab.Navigator>
   );
 }

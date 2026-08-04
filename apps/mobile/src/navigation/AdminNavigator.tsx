@@ -5,6 +5,7 @@ import { DashboardScreen } from '../screens/admin/DashboardScreen';
 import { RoomsScreen } from '../screens/admin/RoomsScreen';
 import { RoomSchedulesScreen } from '../screens/admin/RoomSchedulesScreen';
 import { NotificationsScreen } from '../screens/admin/NotificationsScreen';
+import { ProfileScreen } from '../screens/shared/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -15,6 +16,7 @@ const ICONS: Record<string, [IoniconName, IoniconName]> = {
   Salas:     ['business-outline',       'business'],
   Horários:  ['calendar-outline',       'calendar'],
   Avisos:    ['notifications-outline',  'notifications'],
+  Perfil:    ['person-circle-outline',  'person-circle'],
 };
 
 export function AdminNavigator() {
@@ -32,6 +34,7 @@ export function AdminNavigator() {
       <Tab.Screen name="Salas"     component={RoomsScreen} />
       <Tab.Screen name="Horários"  component={RoomSchedulesScreen} />
       <Tab.Screen name="Avisos"    component={NotificationsScreen} />
+      <Tab.Screen name="Perfil"    component={ProfileScreen} />
     </Tab.Navigator>
   );
 }

@@ -57,12 +57,6 @@ export default function RoomsPage() {
   const [form, setForm] = useState({ name: '', capacity: 10 });
   const [error, setError] = useState('');
 
-  // assignment form por sala
-  const [addingTo, setAddingTo] = useState<string | null>(null);
-  const [aForm, setAForm] = useState({ teacherId: '', subjectId: '' });
-  const [aSaving, setASaving] = useState(false);
-  const [teacherSubjects, setTeacherSubjects] = useState<Subject[]>([]);
-
   // reassign modal
   const [reassigning, setReassigning] = useState<ActiveCheckin | null>(null);
   const [newAssignmentId, setNewAssignmentId] = useState('');
@@ -111,24 +105,6 @@ export default function RoomsPage() {
   async function handleDelete(id: string) {
     await api.delete(`/rooms/${id}`);
     setRooms((prev) => prev.filter((r) => r.id !== id));
-  }
-
-  async function handleAddAssignment(roomId: string) {
-    if (!aForm.teacherId) return;
-    setASaving(true);
-    try {
-      const payload: any = { teacherId: aForm.teacherId };
-      if (aForm.subjectId) payload.subjectId = aForm.subjectId;
-      await api.post(`/rooms/${roomId}/assignments`, payload);
-      await loadRooms();
-      setAddingTo(null);
-      setAForm({ teacherId: '', subjectId: '' });
-    } catch {} finally { setASaving(false); }
-  }
-
-  async function handleRemoveAssignment(roomId: string, assignmentId: string) {
-    await api.delete(`/rooms/${roomId}/assignments/${assignmentId}`);
-    await loadRooms();
   }
 
   async function handleReassign() {
@@ -322,77 +298,6 @@ export default function RoomsPage() {
                     </button>
                   </div>
 
-                  {/* Professores alocados */}
-                  <div className="pl-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {r.assignments.map((a) => (
-                        <div key={a.id} className="flex items-center gap-1.5 rounded-full bg-brand-50 border border-brand-200 px-3 py-1 text-xs">
-                          <span className="font-medium text-brand-700">{a.teacher.name}</span>
-                          {a.subject && <span className="text-brand-500">· {a.subject.name}</span>}
-                          <button
-                            onClick={() => handleRemoveAssignment(r.id, a.id)}
-                            className="ml-1 text-brand-400 hover:text-red-500 font-bold leading-none"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        onClick={() => { setAddingTo(r.id); setAForm({ teacherId: '', subjectId: '' }); }}
-                        className="rounded-full border border-dashed border-gray-300 px-3 py-1 text-xs text-gray-400 hover:border-brand-400 hover:text-brand-600"
-                      >
-                        + Professor
-                      </button>
-                    </div>
-
-                    {/* Form inline de adicionar professor */}
-                    {addingTo === r.id && (
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <select
-                          value={aForm.teacherId}
-                          onChange={async (e) => {
-                            const teacherId = e.target.value;
-                            setAForm({ teacherId, subjectId: '' });
-                            setTeacherSubjects([]);
-                            if (!teacherId) return;
-                            try {
-                              const { data } = await api.get<{ id: string; subject: Subject }[]>(`/teacher-subjects?teacherId=${teacherId}`);
-                              const subs = data.map((ts) => ts.subject);
-                              setTeacherSubjects(subs);
-                              if (subs.length === 1) setAForm({ teacherId, subjectId: subs[0].id });
-                            } catch {}
-                          }}
-                          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
-                        >
-                          <option value="">Selecione professor...</option>
-                          {teachers
-                            .filter((t) => !r.assignments.some((a) => a.teacher.id === t.id))
-                            .map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                        </select>
-                        {aForm.teacherId && (
-                          <select
-                            value={aForm.subjectId}
-                            onChange={(e) => setAForm((p) => ({ ...p, subjectId: e.target.value }))}
-                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
-                          >
-                            <option value="">Disciplina (opcional)</option>
-                            {(teacherSubjects.length > 0 ? teacherSubjects : subjects).map((s) => (
-                              <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
-                          </select>
-                        )}
-                        <button
-                          onClick={() => handleAddAssignment(r.id)}
-                          disabled={!aForm.teacherId || aSaving}
-                          className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-60 flex items-center gap-1"
-                        >
-                          {aSaving ? <Spinner size="sm" className="text-white" /> : null}
-                          Adicionar
-                        </button>
-                        <button onClick={() => setAddingTo(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancelar</button>
-                      </div>
-                    )}
-                  </div>
                 </li>
               );
             })}

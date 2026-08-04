@@ -8,6 +8,7 @@ import { ActivityScreen } from '../screens/student/ActivityScreen';
 import { ProgressScreen } from '../screens/student/ProgressScreen';
 import { RoomCheckinScreen } from '../screens/student/RoomCheckinScreen';
 import { NotificationsScreen } from '../screens/student/NotificationsScreen';
+import { ProfileScreen } from '../screens/shared/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -21,6 +22,7 @@ const ICONS: Record<string, [IoniconName, IoniconName]> = {
   Atividade: ['camera-outline',           'camera'],
   Evolução:  ['trending-up-outline',      'trending-up'],
   Avisos:    ['notifications-outline',    'notifications'],
+  Perfil:    ['person-circle-outline',    'person-circle'],
 };
 
 export function StudentNavigator() {
@@ -41,6 +43,7 @@ export function StudentNavigator() {
       <Tab.Screen name="Atividade" component={ActivityScreen} />
       <Tab.Screen name="Evolução"  component={ProgressScreen} />
       <Tab.Screen name="Avisos"    component={NotificationsScreen} />
+      <Tab.Screen name="Perfil"    component={ProfileScreen} />
     </Tab.Navigator>
   );
 }

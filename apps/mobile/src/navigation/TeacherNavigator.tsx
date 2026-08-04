@@ -6,6 +6,7 @@ import { NotesScreen } from '../screens/teacher/NotesScreen';
 import { TasksScreen } from '../screens/teacher/TasksScreen';
 import { RoomScreen } from '../screens/teacher/RoomScreen';
 import { NotificationsScreen } from '../screens/teacher/NotificationsScreen';
+import { ProfileScreen } from '../screens/shared/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -17,6 +18,7 @@ const ICONS: Record<string, [IoniconName, IoniconName]> = {
   Tarefas:   ['checkbox-outline',        'checkbox'],
   Salas:     ['school-outline',          'school'],
   Avisos:    ['notifications-outline',   'notifications'],
+  Perfil:    ['person-circle-outline',   'person-circle'],
 };
 
 export function TeacherNavigator() {
@@ -35,6 +37,7 @@ export function TeacherNavigator() {
       <Tab.Screen name="Tarefas"  component={TasksScreen} />
       <Tab.Screen name="Salas"    component={RoomScreen} />
       <Tab.Screen name="Avisos"   component={NotificationsScreen} />
+      <Tab.Screen name="Perfil"   component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
