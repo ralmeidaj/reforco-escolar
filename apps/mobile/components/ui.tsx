@@ -1,6 +1,6 @@
 import {
   View, Text, TouchableOpacity, ActivityIndicator, Animated,
-  StyleSheet, type ViewStyle, type TextStyle,
+  StyleSheet, type ViewStyle,
 } from 'react-native';
 import { useEffect, useRef } from 'react';
 
@@ -101,6 +101,72 @@ export function SkeletonCard({ height = 72 }: { height?: number }) {
 export function SectionHeader({ title }: { title: string }) {
   return <Text style={s.sectionHeader}>{title}</Text>;
 }
+
+// ── AppLogo ───────────────────────────────────────────────────────────────────
+export function AppLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
+  const dim   = size === 'sm' ? 36  : size === 'lg' ? 72  : 52;
+  const emoji = size === 'sm' ? 16  : size === 'lg' ? 32  : 24;
+  const name  = size === 'sm' ? 15  : size === 'lg' ? 26  : 20;
+  const sub   = size === 'sm' ? 0   : size === 'lg' ? 13  : 11;
+
+  return (
+    <View style={logo.wrap}>
+      <View style={[logo.circle, { width: dim, height: dim, borderRadius: dim / 2 }]}>
+        <Text style={{ fontSize: emoji }}>📚</Text>
+      </View>
+      <View>
+        <Text style={[logo.name, { fontSize: name }]}>Reforços Escolares</Text>
+        {sub > 0 && <Text style={[logo.sub, { fontSize: sub }]}>Plataforma pedagógica</Text>}
+      </View>
+    </View>
+  );
+}
+
+const logo = StyleSheet.create({
+  wrap:   { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  circle: { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  name:   { fontWeight: '700', color: '#111827', letterSpacing: -0.3 },
+  sub:    { color: colors.muted, marginTop: 1 },
+});
+
+// ── AppSplashScreen ───────────────────────────────────────────────────────────
+export function AppSplashScreen({ onDone }: { onDone: () => void }) {
+  const scale   = useRef(new Animated.Value(0.6)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const fadeOut = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.spring(scale,   { toValue: 1,   useNativeDriver: true, tension: 55, friction: 7 }),
+        Animated.timing(opacity, { toValue: 1,   duration: 350,         useNativeDriver: true }),
+      ]),
+      Animated.delay(900),
+      Animated.timing(fadeOut,   { toValue: 0,   duration: 280,         useNativeDriver: true }),
+    ]).start(() => onDone());
+  }, []);
+
+  return (
+    <Animated.View style={[sp.container, { opacity: fadeOut }]}>
+      <Animated.View style={[sp.inner, { opacity, transform: [{ scale }] }]}>
+        <View style={sp.iconCircle}>
+          <Text style={sp.iconEmoji}>📚</Text>
+        </View>
+        <Text style={sp.appName}>Reforços Escolares</Text>
+        <Text style={sp.tagline}>Plataforma pedagógica</Text>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
+const sp = StyleSheet.create({
+  container:  { flex: 1, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  inner:      { alignItems: 'center', gap: 16 },
+  iconCircle: { width: 96, height: 96, borderRadius: 48, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  iconEmoji:  { fontSize: 44 },
+  appName:    { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
+  tagline:    { fontSize: 13, color: 'rgba(255,255,255,0.75)' },
+});
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({

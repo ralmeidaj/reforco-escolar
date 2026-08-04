@@ -8,6 +8,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { saveTenantSlug, saveTokens, saveUser } from '../../../lib/auth';
 import { useAuth, UserRole } from '../../navigation/RootNavigator';
+import { AppLogo } from '../../../../components/ui';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
@@ -125,7 +126,9 @@ export function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.card}>
-        <Text style={styles.title}>Reforços Escolares</Text>
+        <View style={{ marginBottom: 24 }}>
+          <AppLogo size="lg" />
+        </View>
         <Text style={styles.subtitle}>Faça login na sua conta</Text>
 
         <View style={styles.field}>

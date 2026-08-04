@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { getAccessToken, getUser, clearAuth } from '../../lib/auth';
 import { setSessionExpiredHandler } from '../../lib/api';
+import { AppSplashScreen, colors } from '../../../components/ui';
 import { AuthNavigator } from './AuthNavigator';
 import { StudentNavigator } from './StudentNavigator';
 import { GuardianNavigator } from './GuardianNavigator';
@@ -39,8 +40,9 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
-  const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState<UserRole | null>(null);
+  const [authReady, setAuthReady]   = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
+  const [role, setRole]             = useState<UserRole | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -49,7 +51,7 @@ export function RootNavigator() {
         getUser<{ role: UserRole }>(),
       ]);
       if (token && user) setRole(user.role);
-      setLoading(false);
+      setAuthReady(true);
     })();
   }, []);
 
@@ -63,10 +65,14 @@ export function RootNavigator() {
     setSessionExpiredHandler(() => { clearAuth(); setRole(null); });
   }, []);
 
-  if (loading) {
+  if (!splashDone) {
+    return <AppSplashScreen onDone={() => setSplashDone(true)} />;
+  }
+
+  if (!authReady) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB' }}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }

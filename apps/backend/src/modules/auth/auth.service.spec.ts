@@ -12,9 +12,11 @@ import { AuthService } from './auth.service';
 import { User } from './user.entity';
 import { RefreshToken } from './refresh-token.entity';
 import { Invite } from './invite.entity';
+import { Tenant } from '../tenants/tenant.entity';
 import { REDIS_CLIENT } from '../../common/redis/redis.module';
 
 const mockUsersRepo = {
+  find: jest.fn().mockResolvedValue([]),
   findOne: jest.fn(),
   create: jest.fn((dto) => dto),
   save: jest.fn(),
@@ -31,6 +33,11 @@ const mockInviteRepo = {
   findOne: jest.fn(),
   create: jest.fn((dto) => dto),
   save: jest.fn(),
+};
+
+const mockTenantsRepo = {
+  findOne: jest.fn(),
+  find: jest.fn().mockResolvedValue([]),
 };
 
 const mockJwtService = { sign: jest.fn().mockReturnValue('mock.jwt.token') };
@@ -58,6 +65,7 @@ describe('AuthService', () => {
         { provide: getRepositoryToken(User), useValue: mockUsersRepo },
         { provide: getRepositoryToken(RefreshToken), useValue: mockRefreshTokensRepo },
         { provide: getRepositoryToken(Invite), useValue: mockInviteRepo },
+        { provide: getRepositoryToken(Tenant), useValue: mockTenantsRepo },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: REDIS_CLIENT, useValue: mockRedis },
@@ -198,6 +206,49 @@ describe('AuthService', () => {
         { userId: 'user-1', revoked: false },
         { revoked: true },
       );
+    });
+  });
+
+  describe('loginMobile', () => {
+    it('retorna tokens e tenantSlug quando há um único match', async () => {
+      const hash = await bcrypt.hash('senha123', 10);
+      mockUsersRepo.find.mockResolvedValue([
+        { id: 'user-1', email: 'joao@test.com', passwordHash: hash, role: 'student', tenantId: 'tenant-1', name: 'João' },
+      ]);
+      mockTenantsRepo.findOne.mockResolvedValue({ id: 'tenant-1', slug: 'escola-silva', name: 'Escola Silva' });
+      mockRefreshTokensRepo.save.mockResolvedValue({});
+
+      const result = await service.loginMobile({ email: 'joao@test.com', password: 'senha123' });
+
+      expect(result.accessToken).toBe('mock.jwt.token');
+      expect((result as any).tenantSlug).toBe('escola-silva');
+    });
+
+    it('retorna requireTenantSelection quando e-mail está em múltiplos tenants', async () => {
+      const hash = await bcrypt.hash('senha123', 10);
+      mockUsersRepo.find.mockResolvedValue([
+        { id: 'user-1', email: 'joao@test.com', passwordHash: hash, tenantId: 'tenant-1' },
+        { id: 'user-2', email: 'joao@test.com', passwordHash: hash, tenantId: 'tenant-2' },
+      ]);
+      mockTenantsRepo.find.mockResolvedValue([
+        { id: 'tenant-1', slug: 'escola-a', name: 'Escola A' },
+        { id: 'tenant-2', slug: 'escola-b', name: 'Escola B' },
+      ]);
+
+      const result = await service.loginMobile({ email: 'joao@test.com', password: 'senha123' });
+
+      expect((result as any).requireTenantSelection).toBe(true);
+      expect((result as any).tenants).toHaveLength(2);
+    });
+
+    it('lança UnauthorizedException se senha incorreta', async () => {
+      const hash = await bcrypt.hash('certa', 10);
+      mockUsersRepo.find.mockResolvedValue([
+        { id: 'user-1', email: 'joao@test.com', passwordHash: hash, tenantId: 'tenant-1' },
+      ]);
+
+      await expect(service.loginMobile({ email: 'joao@test.com', password: 'errada' }))
+        .rejects.toThrow(UnauthorizedException);
     });
   });
 
