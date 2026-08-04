@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { withAlpha } from '../../lib/tabColors';
 import { AttendanceScreen } from '../screens/teacher/AttendanceScreen';
 import { NotesScreen } from '../screens/teacher/NotesScreen';
 import { TasksScreen } from '../screens/teacher/TasksScreen';
@@ -21,17 +22,29 @@ const ICONS: Record<string, [IoniconName, IoniconName]> = {
   Perfil:    ['person-circle-outline',   'person-circle'],
 };
 
+const TAB_COLORS: Record<string, string> = {
+  Presença: '#2563EB',
+  Notas:    '#6366F1',
+  Tarefas:  '#D97706',
+  Salas:    '#0D9488',
+  Avisos:   '#DC2626',
+  Perfil:   '#0EA5E9',
+};
+
 export function TeacherNavigator() {
   return (
-    <Tab.Navigator screenOptions={({ route }) => ({
-      headerShown: false,
-      tabBarActiveTintColor: '#2563EB',
-      tabBarInactiveTintColor: '#6B7280',
-      tabBarIcon: ({ focused, color, size }) => {
-        const [outline, filled] = ICONS[route.name] ?? ['ellipse-outline', 'ellipse'];
-        return <Ionicons name={focused ? filled : outline} size={size} color={color} />;
-      },
-    })}>
+    <Tab.Navigator screenOptions={({ route }) => {
+      const active = TAB_COLORS[route.name] ?? '#2563EB';
+      return {
+        headerShown: false,
+        tabBarActiveTintColor: active,
+        tabBarInactiveTintColor: withAlpha(active, 0.45),
+        tabBarIcon: ({ focused, color, size }) => {
+          const [outline, filled] = ICONS[route.name] ?? ['ellipse-outline', 'ellipse'];
+          return <Ionicons name={focused ? filled : outline} size={size} color={color} />;
+        },
+      };
+    }}>
       <Tab.Screen name="Presença" component={AttendanceScreen} />
       <Tab.Screen name="Notas"    component={NotesScreen} />
       <Tab.Screen name="Tarefas"  component={TasksScreen} />
