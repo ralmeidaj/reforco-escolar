@@ -47,11 +47,6 @@ export default function EnrollmentsPage() {
     }
   }, []);
 
-  function selectStudent(student: Student) {
-    setSelected(student);
-    loadEnrollments(student);
-  }
-
   async function reloadEnrollments(studentId: string) {
     const { data } = await api.get<Enrollment[]>(`/enrollments?studentId=${studentId}`);
     setEnrollments(data);
@@ -100,9 +95,15 @@ export default function EnrollmentsPage() {
     s.email.toLowerCase().includes(search.toLowerCase())
   );
 
-  const enrolledCount = selected
-    ? enrollments.length
-    : 0;
+  const enrolledCount = selected ? enrollments.length : 0;
+  // no mobile, alterna entre painel de lista e painel de disciplinas
+  const [mobileView, setMobileView] = useState<'list' | 'subjects'>('list');
+
+  function selectStudent(student: Student) {
+    setSelected(student);
+    loadEnrollments(student);
+    setMobileView('subjects');
+  }
 
   return (
     <div className="space-y-4">
@@ -111,9 +112,9 @@ export default function EnrollmentsPage() {
         <p className="mt-1 text-sm text-gray-500">Selecione um aluno e marque as disciplinas em que ele está matriculado</p>
       </div>
 
-      <div className="flex gap-4" style={{ minHeight: '70vh' }}>
+      <div className="flex flex-col gap-4 lg:flex-row" style={{ minHeight: '70vh' }}>
         {/* Painel esquerdo — lista de alunos */}
-        <div className="flex w-72 shrink-0 flex-col rounded-2xl bg-white shadow-sm">
+        <div className={`flex flex-col rounded-2xl bg-white shadow-sm lg:w-72 lg:shrink-0 ${mobileView === 'subjects' ? 'hidden lg:flex' : 'flex'}`}>
           <div className="border-b border-gray-100 p-3">
             <input
               type="text"
@@ -154,7 +155,7 @@ export default function EnrollmentsPage() {
         </div>
 
         {/* Painel direito — disciplinas com checkboxes */}
-        <div className="flex-1 rounded-2xl bg-white shadow-sm">
+        <div className={`flex-1 rounded-2xl bg-white shadow-sm ${mobileView === 'list' ? 'hidden lg:block' : 'block'}`}>
           {!selected ? (
             <div className="flex h-full items-center justify-center text-gray-400">
               <div className="text-center">
@@ -163,11 +164,20 @@ export default function EnrollmentsPage() {
               </div>
             </div>
           ) : (
-            <div className="p-6">
-              <div className="mb-5 flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-gray-900">{selected.name}</h2>
-                  <p className="text-sm text-gray-400">{selected.email}</p>
+            <div className="p-4 lg:p-6">
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <button
+                    onClick={() => setMobileView('list')}
+                    className="shrink-0 rounded-lg border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50 lg:hidden"
+                    aria-label="Voltar"
+                  >
+                    ←
+                  </button>
+                  <div className="min-w-0">
+                    <h2 className="truncate text-base font-semibold text-gray-900">{selected.name}</h2>
+                    <p className="truncate text-sm text-gray-400">{selected.email}</p>
+                  </div>
                 </div>
                 <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-700">
                   {enrolledCount} {enrolledCount === 1 ? 'disciplina' : 'disciplinas'} matriculada{enrolledCount !== 1 ? 's' : ''}
