@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { DashboardScreen } from '../screens/admin/DashboardScreen';
 import { RoomsScreen } from '../screens/admin/RoomsScreen';
+import { RoomSchedulesScreen } from '../screens/admin/RoomSchedulesScreen';
 import { NotificationsScreen } from '../screens/admin/NotificationsScreen';
 
 const Tab = createBottomTabNavigator();
@@ -12,6 +13,7 @@ type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 const ICONS: Record<string, [IoniconName, IoniconName]> = {
   Dashboard: ['stats-chart-outline',    'stats-chart'],
   Salas:     ['business-outline',       'business'],
+  Horários:  ['calendar-outline',       'calendar'],
   Avisos:    ['notifications-outline',  'notifications'],
 };
 
@@ -28,6 +30,7 @@ export function AdminNavigator() {
     })}>
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Salas"     component={RoomsScreen} />
+      <Tab.Screen name="Horários"  component={RoomSchedulesScreen} />
       <Tab.Screen name="Avisos"    component={NotificationsScreen} />
     </Tab.Navigator>
   );

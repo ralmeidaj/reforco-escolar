@@ -6,7 +6,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -15,6 +15,7 @@ import { Resend } from 'resend';
 import { User, UserRole } from './user.entity';
 import { RefreshToken } from './refresh-token.entity';
 import { Invite } from './invite.entity';
+import { Tenant } from '../tenants/tenant.entity';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -36,6 +37,8 @@ export class AuthService {
     private refreshTokensRepo: Repository<RefreshToken>,
     @InjectRepository(Invite)
     private invitesRepo: Repository<Invite>,
+    @InjectRepository(Tenant)
+    private tenantsRepo: Repository<Tenant>,
     private jwtService: JwtService,
     private config: ConfigService,
     @Inject(REDIS_CLIENT) private redis: Redis,
@@ -79,6 +82,31 @@ export class AuthService {
     if (!valid) throw new UnauthorizedException('Credenciais inválidas');
 
     return this.generateTokens(user);
+  }
+
+  async loginMobile(dto: LoginDto) {
+    const users = await this.usersRepo.find({ where: { email: dto.email } });
+
+    const valid: User[] = [];
+    for (const user of users) {
+      const ok = await bcrypt.compare(dto.password, user.passwordHash);
+      if (ok) valid.push(user);
+    }
+
+    if (valid.length === 0) throw new UnauthorizedException('Credenciais inválidas');
+
+    if (valid.length > 1) {
+      const tenants = await this.tenantsRepo.find({ where: { id: In(valid.map((u) => u.tenantId)) } });
+      return {
+        requireTenantSelection: true,
+        tenants: tenants.map((t) => ({ slug: t.slug, name: t.name })),
+      };
+    }
+
+    const user = valid[0];
+    const tenant = await this.tenantsRepo.findOne({ where: { id: user.tenantId } });
+    const tokens = await this.generateTokens(user);
+    return { ...tokens, tenantSlug: tenant?.slug ?? '' };
   }
 
   async refresh(userId: string, rawToken: string) {

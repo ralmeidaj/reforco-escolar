@@ -63,6 +63,17 @@ export class AuthController {
   }
 
   @Public()
+  @Post('login/mobile')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Login mobile — sem slug, retorna tenantSlug no body' })
+  @ApiResponse({ status: 200, description: 'Login bem-sucedido ou seleção de escola necessária' })
+  @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
+  async loginMobile(@Body() dto: LoginDto) {
+    return this.authService.loginMobile(dto);
+  }
+
+  @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Renovar access token (web — cookie)' })

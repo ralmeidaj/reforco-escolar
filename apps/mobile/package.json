@@ -11,7 +11,6 @@
     "expo": "~56.0.12",
     "expo-camera": "~56.0.8",
     "expo-constants": "~56.0.18",
-    "expo-dev-client": "~56.0.24",
     "expo-image-picker": "~56.0.18",
     "expo-notifications": "~56.0.18",
     "expo-secure-store": "~56.0.4",
@@ -24,10 +23,11 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "expo-dev-client": "~56.0.24",
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "start": "react-native start",
+    "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios"
   },
