@@ -79,7 +79,7 @@ cd apps/mobile && eas build --platform ios      # gera IPA
 - **Rotas públicas:** usar `@Public()` — nunca remover o guard global
 - **Roles:** usar `@Roles('tenant_admin')`, `@Roles('teacher')` etc. no controller
 - **Ownership:** `@UseGuards(OwnershipGuard('nome_tabela'))` valida `resource.user_id === req.user.sub` sem acoplamento à entidade
-- **`TenantGuard` dual:** resolve o tenant pelo subdomínio da requisição (web) **ou** pelo header `X-Tenant-Slug` (mobile). O mobile não tem subdomínio — o usuário digita o slug da escola na tela de login e o app envia esse header em todas as requisições
+- **`TenantGuard` dual:** resolve o tenant pelo subdomínio da requisição (web) **ou** pelo header `X-Tenant-Slug` (mobile). O mobile não tem subdomínio — o slug é resolvido automaticamente no login (por e-mail, via `POST /auth/login/mobile`) e o app envia esse header em todas as requisições seguintes
 
 ### Scoping automático por tenant
 `TenantInterceptor` garante que todas as queries incluam o filtro `tenant_id` automaticamente. **Não** adicionar filtro `tenant_id` manual nos serviços — será duplicado. O `tenant_id` fica disponível em `req.tenant.id`.
@@ -156,7 +156,7 @@ Expo com React Native — **um único app** que serve três contextos de uso dis
 | `guardian` | Celular pessoal | Em casa |
 | `teacher` / `tenant_admin` | Tablet do reforço | Na escola |
 
-Após o login com o slug da escola, o app detecta o role do usuário pelo JWT e exibe a experiência correspondente. O layout adapta automaticamente: phone layout para aluno e responsável, tablet layout para professor e admin.
+Após o login (só e-mail/senha — sem slug, ver "Identificação de tenant no mobile"), o app detecta o role do usuário pelo JWT e exibe a experiência correspondente (navigator diferente por role). O helper `isTablet()` em `lib/layout.ts` existe mas ainda não está integrado por tela — hoje as telas são responsivas de forma genérica, sem split de componentes phone/tablet.
 
 Motivo da câmera nativa: upload de foto da atividade feita e corrigida (aluno) e eventuais registros do professor.
 
@@ -164,13 +164,16 @@ Motivo da câmera nativa: upload de foto da atividade feita e corrigida (aluno) 
 - Cookies `HttpOnly` **não funcionam** em React Native — o app usa `Authorization: Bearer` no header
 - Tokens armazenados em `expo-secure-store` (criptografado pelo keychain do dispositivo) — **nunca AsyncStorage simples**
 - O backend já aceita Bearer token além de cookie — nenhuma mudança necessária no backend
+- Login usa `POST /auth/login/mobile` (só `{ email, password }`, sem slug) — ver "Identificação de tenant no mobile"
 - Refresh token enviado via body (`{ refreshToken }`) em `POST /auth/refresh/mobile`
 - Ao receber 401, o interceptor do Axios renova o token automaticamente antes de retentar
+- Erro de rede (sem `error.response` — sem internet, DNS, timeout) é tratado separado de 401 no mesmo interceptor: dispara alerta "Sem conexão" e volta para a tela de login **sem apagar o token salvo**; a sessão continua válida quando a conexão voltar (`setNetworkErrorHandler` em `lib/api.ts`)
 
 ### Identificação de tenant no mobile
-- O tenant não vem do subdomínio (não há URL no app)
-- Na tela de login, o usuário digita o **slug da escola** (ex.: `escola-silva`)
-- O app envia o slug no header `X-Tenant-Slug` em todas as requisições
+- O tenant não vem do subdomínio (não há URL no app) e o usuário **não digita mais o slug** — login é só e-mail + senha
+- `POST /auth/login/mobile` busca o e-mail em todos os tenants; havendo um único match, retorna tokens + `tenantSlug` direto
+- E-mail cadastrado em mais de um tenant → resposta `{ requireTenantSelection: true, tenants: [...] }`; o app mostra uma tela de seleção de escola e então chama `POST /auth/login` normal com o `X-Tenant-Slug` da escola escolhida
+- O slug resolvido é salvo no `expo-secure-store` e enviado no header `X-Tenant-Slug` em todas as requisições seguintes
 - O `TenantGuard` resolve o tenant pelo header quando não há subdomínio
 
 ### Câmera e uploads
@@ -190,44 +193,36 @@ Motivo da câmera nativa: upload de foto da atividade feita e corrigida (aluno) 
 - **Celular de aluno e responsável:** distribuído via link de download (EAS Update / Expo Go em dev) ou publicado na Play Store / App Store quando escalar
 
 ### Estrutura de pastas do app mobile
+Navegação via **React Navigation** (`@react-navigation/native` + `bottom-tabs` + `native-stack`) — **não** é Expo Router / file-based routing.
 ```
 apps/mobile/
-  app/                        ← Expo Router (file-based routing)
-    (auth)/
-      login.tsx               ← slug da escola + e-mail/senha
-    (student)/                ← role: student — celular
-      home.tsx                ← próximas aulas, tarefas do dia
-      tasks/                  ← tarefas com prazo, marcar como feita
-      study-log/              ← diário de estudo (assunto + páginas)
-      activity/               ← upload de atividade (câmera)
-      progress/               ← linha do tempo de evolução
-      notifications.tsx
-    (guardian)/               ← role: guardian — celular
-      home.tsx                ← resumo do(s) filho(s)
-      attendance/             ← frequência e faltas
-      tasks/                  ← tarefas pendentes do filho
-      progress/               ← evolução por disciplina
-      finance/                ← saldo de aulas, pagamentos
-      chat/                   ← chat com professor
-      notifications.tsx
-    (teacher)/                ← role: teacher — tablet
-      attendance/             ← lista de presença por sessão
-      notes/                  ← notas de aula
-      tasks/                  ← gerenciar tarefas dos alunos
-      room/                   ← ocupação das salas em tempo real
-      notifications.tsx
-    (admin)/                  ← role: tenant_admin — tablet
-      dashboard/              ← KPIs, salas, faltas do dia
-      rooms/                  ← gestão de salas
-      notifications.tsx
+  App.tsx                       ← entry point, renderiza RootNavigator
   components/
-    phone/                    ← componentes otimizados para celular
-    tablet/                   ← componentes otimizados para tablet
+    ui.tsx                      ← kit compartilhado: Card, Button, Badge, EmptyState,
+                                   SkeletonCard, AppLogo, AppSplashScreen, colors
   lib/
-    api.ts                    ← Axios com interceptor de refresh
-    auth.ts                   ← SecureStore helpers
-    layout.ts                 ← detecta se é tablet (width > 768) e ajusta layout
+    api.ts                      ← Axios com interceptor de refresh (401) e de erro de rede
+    auth.ts                     ← expo-secure-store: tokens, tenantSlug, user
+    layout.ts                   ← isTablet() (width >= 768) — ainda não usado nas telas
+    tabColors.ts                ← cor de destaque por aba da bottom tab bar
+  src/
+    navigation/
+      RootNavigator.tsx         ← splash screen → checa sessão salva → switch por role
+      AuthNavigator.tsx
+      AdminNavigator.tsx        ← tabs: Dashboard · Salas · Horários · Avisos · Perfil
+      TeacherNavigator.tsx      ← tabs: Presença · Notas · Tarefas · Salas · Avisos · Perfil
+      StudentNavigator.tsx      ← tabs: Início · Salas · Tarefas · Estudo · Atividade · Evolução · Avisos · Perfil
+      GuardianNavigator.tsx     ← tabs: Início · Frequência · Tarefas · Evolução · Financeiro · Chat · Avisos · Perfil
+    screens/
+      auth/LoginScreen.tsx       ← e-mail + senha (sem slug); tela de seleção de escola se necessário
+      shared/ProfileScreen.tsx   ← reaproveitada pelos 4 navigators (dados do usuário + Sair da conta)
+      admin/                     ← DashboardScreen, RoomsScreen, RoomSchedulesScreen, NotificationsScreen
+      teacher/                   ← AttendanceScreen, NotesScreen, TasksScreen, RoomScreen, NotificationsScreen
+      student/                   ← HomeScreen, TasksScreen, StudyLogScreen, ActivityScreen, ProgressScreen, RoomCheckinScreen, NotificationsScreen
+      guardian/                  ← HomeScreen, AttendanceScreen, TasksScreen, ProgressScreen, FinanceScreen, ChatScreen, NotificationsScreen
 ```
+
+**Atenção:** telas devem importar `SafeAreaView` de `react-native-safe-area-context`, nunca de `react-native` puro — a versão do RN não respeita corretamente notch/status bar/câmera no Android e corta cabeçalhos e abas (já causou bug em produção).
 
 ## Variáveis de ambiente
 
@@ -244,11 +239,20 @@ O `.env` fica na **raiz do monorepo**. O frontend usa `apps/frontend/.env.local`
 | `R2_SECRET_ACCESS_KEY` | `.env` | Sim |
 | `R2_BUCKET_NAME` | `.env` | Sim |
 | `NEXT_PUBLIC_API_URL` | `.env.local` | Sim |
+| `EXPO_PUBLIC_API_URL` | `apps/mobile/.env` | Sim |
 | `ASAAS_API_KEY` | `.env` | Não (stub sem chave — Spec 6) |
 | `EVOLUTION_API_URL` | `.env` | Não (stub sem chave — Spec 5) |
 | `EVOLUTION_API_KEY` | `.env` | Não (stub sem chave — Spec 5) |
 | `OPENAI_API_KEY` | `.env` | Não (stub sem chave — Spec 9) |
 | `EXPO_ACCESS_TOKEN` | `.env` | Não (só necessário para envio push em escala) |
+
+⚠️ **EAS Build (mobile) não lê `apps/mobile/.env`** — o arquivo é gitignored e o build na nuvem arquiva o projeto via `git`, então toda variável `EXPO_PUBLIC_*` fica `undefined` no app compilado (cai no fallback `localhost:3000`, que não funciona em dispositivo físico). Registrar cada variável também no EAS antes de buildar:
+```bash
+cd apps/mobile
+eas env:create --scope project --name EXPO_PUBLIC_API_URL --value https://sua-api.com --environment preview --visibility plaintext
+# repetir para --environment production e --environment development
+```
+O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`/`development`) automaticamente — não precisa de `"environment"` explícito se os nomes coincidirem. Da mesma forma, **o `pnpm-lock.yaml` commitado precisa estar em sincronia com os `package.json`** (rodar `pnpm install` localmente antes de buildar) — o EAS Build instala com `--frozen-lockfile` e falha com um erro genérico ("Unknown error" na fase "Install dependencies") se houver divergência.
 
 ## Segurança
 
@@ -339,6 +343,8 @@ O `.env` fica na **raiz do monorepo**. O frontend usa `apps/frontend/.env.local`
 **Funcionalidades:**
 - Cadastro self-service de tenant (escola) com slug único → subdomínio automático
 - Login / logout / refresh token para todos os roles
+- **Login mobile sem slug:** `POST /auth/login/mobile` identifica o tenant pelo e-mail automaticamente; se o e-mail existir em mais de uma escola, o app pede para escolher antes de autenticar
+- **Detecção de falta de conexão (mobile):** erro de rede é diferenciado de sessão expirada — mostra alerta e volta para o login sem invalidar o token salvo
 - Forgot / reset password via e-mail (Resend)
 - Convites por e-mail com token para professor, aluno e responsável
 - `TenantGuard` + `TenantInterceptor` globais
@@ -371,13 +377,15 @@ O `.env` fica na **raiz do monorepo**. O frontend usa `apps/frontend/.env.local`
 - Vista de calendário semanal e mensal
 - Cancelamento com motivo + notificação automática
 - CRUD de salas com capacidade máxima por tenant
-- **Múltiplos professores por sala:** tabela `room_assignments` (N:M) — cada sala pode ter vários professores, cada um com uma disciplina opcional
+- **Múltiplos professores por sala:** tabela `room_assignments` (N:M) — cada sala pode ter vários professores, cada um com uma disciplina opcional. **No web, `room_assignments` só é populada via grade de horários** (`room_schedules`) — não existe mais UI de adicionar professor direto na sala
 - **Balanceamento automático de check-in:** ao aluno entrar na sala, o sistema distribui para o professor com menos alunos ativos; se houver sessão pré-agendada "A definir" (sem aluno) compatível (±90 min / +30 min), ela é reaproveitada em vez de criar uma nova
 - **Troca de professor (só admin):** `PATCH /rooms/checkins/:id/reassign` permite ao admin realocar um aluno para outro professor da mesma sala como exceção
+- **Encerrar check-in manualmente (só admin):** `DELETE /rooms/checkins/:checkinId` força o checkout de um aluno (botão "Encerrar" na lista de ocupação) — corrige check-in que ficou "presente" indevidamente
+- **Checkout automático ao fim do turno:** cron às 12h, 18h e 00h encerra todos os check-ins ainda abertos (`checkoutAt IS NULL`), evitando aluno marcado como presente depois que o turno já terminou
 - Turmas fixas (ex.: 5º ano, infantil) têm `room_id` fixo e não participam da alocação automática
 - **Grade de horários semanal por sala:** tabela `room_schedules` (dia da semana × turno → disciplina + professores); configurada via `GET/POST/DELETE /rooms/:id/schedules`; professores exibidos no formulário são filtrados pela disciplina selecionada (`GET /teacher-subjects?subjectId=`)
 - **Kiosk com filtro por turno:** exibe somente salas com horário cadastrado para o turno atual (Manhã 06-12h, Tarde 12-18h, Noite 18-24h); sem horário configurado para o turno, kiosk exibe "Nenhuma sala disponível"; resolve tenant via `?tenant=slug` ou localStorage
-- Admin visualiza ocupação em tempo real por sala; kiosk permite check-in pelo aluno sem autenticação via busca por nome
+- Admin visualiza ocupação em tempo real por sala ("Alunos no reforço agora"); kiosk permite check-in pelo aluno sem autenticação via busca por nome
 
 ---
 

@@ -79,8 +79,13 @@ pnpm lint
 
 # Mobile — gerar APK/IPA via EAS Build
 cd apps/mobile
-eas build --platform android
-eas build --platform ios
+eas build --platform android --profile preview   # APK instalável direto (distribution: internal)
+eas build --platform ios --profile preview
+```
+
+⚠️ Antes do primeiro build, registrar `EXPO_PUBLIC_API_URL` no EAS (o `apps/mobile/.env` local é gitignored e não é enviado ao build na nuvem):
+```bash
+eas env:create --scope project --name EXPO_PUBLIC_API_URL --value https://sua-api.com --environment preview --visibility plaintext
 ```
 
 ## Swagger
