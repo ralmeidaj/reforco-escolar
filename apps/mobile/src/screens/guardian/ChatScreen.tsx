@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
 import { getUser } from '../../../lib/auth';
 import { colors } from '../../../components/ui';
@@ -66,7 +67,7 @@ export function ChatScreen() {
           : contacts.map((c) => (
               <TouchableOpacity key={c.id} onPress={() => { lastCountRef.current = 0; setSelected(c); }} style={s.contactRow}>
                 <View style={s.avatar}><Text style={s.avatarText}>{c.name[0]}</Text></View>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={s.contactName}>{c.name}</Text>
                   <Text style={s.contactRole}>Professor</Text>
                 </View>

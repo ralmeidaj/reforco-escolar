@@ -106,15 +106,15 @@ export function SectionHeader({ title }: { title: string }) {
 export function AppLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const dim   = size === 'sm' ? 36  : size === 'lg' ? 72  : 52;
   const emoji = size === 'sm' ? 16  : size === 'lg' ? 32  : 24;
-  const name  = size === 'sm' ? 15  : size === 'lg' ? 26  : 20;
-  const sub   = size === 'sm' ? 0   : size === 'lg' ? 13  : 11;
+  const name  = size === 'sm' ? 15  : size === 'lg' ? 21  : 20;
+  const sub   = size === 'sm' ? 0   : size === 'lg' ? 12  : 11;
 
   return (
     <View style={logo.wrap}>
       <View style={[logo.circle, { width: dim, height: dim, borderRadius: dim / 2 }]}>
         <Text style={{ fontSize: emoji }}>📚</Text>
       </View>
-      <View>
+      <View style={logo.textWrap}>
         <Text style={[logo.name, { fontSize: name }]}>Reforços Escolares</Text>
         {sub > 0 && <Text style={[logo.sub, { fontSize: sub }]}>Plataforma pedagógica</Text>}
       </View>
@@ -123,10 +123,11 @@ export function AppLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
 }
 
 const logo = StyleSheet.create({
-  wrap:   { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  circle: { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  name:   { fontWeight: '700', color: '#111827', letterSpacing: -0.3 },
-  sub:    { color: colors.muted, marginTop: 1 },
+  wrap:     { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  circle:   { backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  textWrap: { flexShrink: 1 },
+  name:     { fontWeight: '700', color: '#111827', letterSpacing: -0.3, flexShrink: 1 },
+  sub:      { color: colors.muted, marginTop: 1 },
 });
 
 // ── AppSplashScreen ───────────────────────────────────────────────────────────

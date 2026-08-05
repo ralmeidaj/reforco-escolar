@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, SafeAreaView, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
 import { getUser } from '../../../lib/auth';
 import { Card, Badge, SkeletonCard, EmptyState, colors } from '../../../components/ui';

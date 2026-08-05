@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, RefreshControl, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
 import { Card, SkeletonCard, EmptyState, colors } from '../../../components/ui';
 
@@ -124,7 +125,7 @@ export function RoomCheckinScreen() {
         {activeCheckin && (
           <View style={s.activeCard}>
             <View style={s.activeRow}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={s.activeLabel}>Você está em</Text>
                 <Text style={s.activeName}>{activeCheckin.room.name}</Text>
                 <Text style={s.activeTime}>

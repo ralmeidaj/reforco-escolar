@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
 import { Card, SkeletonCard, EmptyState, colors } from '../../../components/ui';
 import { useGuardianStudent } from '../../hooks/useGuardianStudent';
@@ -89,7 +90,7 @@ const s = StyleSheet.create({
   chipText: { fontSize: 13, color: colors.muted },
   chipTextActive: { color: colors.primary, fontWeight: '700' },
   content: { padding: 16, paddingBottom: 40 },
-  subjectName: { fontSize: 15, fontWeight: '700', color: colors.text },
+  subjectName: { fontSize: 15, fontWeight: '700', color: colors.text, flexShrink: 1 },
   level: { fontSize: 13, fontWeight: '600' },
   notes: { fontSize: 13, color: colors.muted, marginTop: 6, fontStyle: 'italic' },
   updatedAt: { fontSize: 11, color: colors.muted, marginTop: 4 },

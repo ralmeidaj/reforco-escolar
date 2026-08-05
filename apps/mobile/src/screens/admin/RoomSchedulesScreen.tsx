@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  SafeAreaView, Alert, RefreshControl, Modal, ActivityIndicator,
+  Alert, RefreshControl, Modal, ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
 import { Card, Button, SkeletonCard, EmptyState, colors } from '../../../components/ui';
 

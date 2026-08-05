@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
 import { Card, SkeletonCard, EmptyState, colors } from '../../../components/ui';
 
@@ -156,7 +157,7 @@ export function AttendanceScreen() {
             <Text style={s.activeSubtitle}>Check-in via kiosk</Text>
             {activeCheckins.map((c) => (
               <View key={c.checkinId} style={s.activeRow}>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={s.activeName}>{c.studentName}</Text>
                   <Text style={s.activeMeta}>
                     {c.roomName} · {new Date(c.checkinAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
@@ -201,7 +202,7 @@ const s = StyleSheet.create({
   hint: { fontSize: 13, color: colors.muted, marginBottom: 12 },
   sessionDate: { fontSize: 13, color: colors.muted, marginBottom: 16, fontStyle: 'italic' },
   noStudent: { fontSize: 13, color: colors.muted, marginBottom: 12, fontStyle: 'italic' },
-  studentName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  studentName: { fontSize: 15, fontWeight: '600', color: colors.text, flexShrink: 1 },
   statusPill: { borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4 },
   statusText: { fontSize: 13, fontWeight: '600' },
   saveBtn: { backgroundColor: colors.primary, borderRadius: 10, padding: 14, alignItems: 'center', marginTop: 16 },

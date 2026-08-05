@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
 import { Card, SkeletonCard, EmptyState, colors } from '../../../components/ui';
 import { useGuardianStudent } from '../../hooks/useGuardianStudent';
@@ -122,7 +123,7 @@ const s = StyleSheet.create({
   alert: { backgroundColor: '#FEF3C7', borderRadius: 10, padding: 12, marginBottom: 12 },
   alertText: { fontSize: 13, color: '#92400E', fontWeight: '600' },
   section: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginTop: 8 },
-  subjectName: { fontSize: 15, fontWeight: '600', color: colors.text },
+  subjectName: { fontSize: 15, fontWeight: '600', color: colors.text, flexShrink: 1 },
   level: { fontSize: 13, fontWeight: '600', textTransform: 'capitalize' },
 });
 const grid = StyleSheet.create({ row: { flexDirection: 'row', gap: 8, marginBottom: 16 } });

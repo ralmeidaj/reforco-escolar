@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
 import { Card, Badge, SkeletonCard, EmptyState, colors } from '../../../components/ui';
 import { useGuardianStudent } from '../../hooks/useGuardianStudent';
@@ -75,7 +76,7 @@ export function AttendanceScreen() {
               : records.map((a) => (
                   <Card key={a.id}>
                     <View style={row.between}>
-                      <View>
+                      <View style={{ flex: 1 }}>
                         <Text style={s.subject}>{a.session?.subject?.name ?? 'Aula'}</Text>
                         <Text style={s.date}>
                           {a.session?.scheduledAt

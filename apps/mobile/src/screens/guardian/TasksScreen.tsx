@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
 import { Card, Badge, SkeletonCard, EmptyState, colors } from '../../../components/ui';
 import { useGuardianStudent } from '../../hooks/useGuardianStudent';
@@ -92,7 +93,9 @@ export function TasksScreen() {
                   <Card key={t.id} style={{ opacity: 0.7 }}>
                     <View style={row.row}>
                       <Text style={s.icon}>{TYPE_ICONS[t.type] ?? '📌'}</Text>
-                      <Text style={[s.taskTitle, s.done]}>{t.title}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.taskTitle, s.done]}>{t.title}</Text>
+                      </View>
                       <Badge label="Feita" variant="success" />
                     </View>
                   </Card>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, SafeAreaView, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
 import { getUser } from '../../../lib/auth';
 import { Card, SkeletonCard, EmptyState, colors } from '../../../components/ui';
@@ -88,7 +89,7 @@ const s = StyleSheet.create({
   headerBar: { backgroundColor: '#fff', padding: 16, borderBottomWidth: 1, borderColor: colors.border },
   title: { fontSize: 20, fontWeight: '700', color: colors.text },
   content: { padding: 16, paddingBottom: 40 },
-  subjectName: { fontSize: 16, fontWeight: '700', color: colors.text },
+  subjectName: { fontSize: 16, fontWeight: '700', color: colors.text, flexShrink: 1 },
   badge: { borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 },
   badgeText: { fontSize: 12, fontWeight: '600' },
   notes: { fontSize: 13, color: colors.muted, marginTop: 8, fontStyle: 'italic' },
