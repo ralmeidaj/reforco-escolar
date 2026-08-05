@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { getAccessToken, getUser, clearAuth } from '../../lib/auth';
-import { setSessionExpiredHandler } from '../../lib/api';
+import { setSessionExpiredHandler, setNetworkErrorHandler } from '../../lib/api';
 import { AppSplashScreen, colors } from '../../components/ui';
 import { AuthNavigator } from './AuthNavigator';
 import { StudentNavigator } from './StudentNavigator';
@@ -63,6 +63,13 @@ export function RootNavigator() {
 
   useEffect(() => {
     setSessionExpiredHandler(() => { clearAuth(); setRole(null); });
+    setNetworkErrorHandler(() => {
+      setRole((current) => {
+        if (current === null) return current;
+        Alert.alert('Sem conexão', 'Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.');
+        return null;
+      });
+    });
   }, []);
 
   if (!splashDone) {

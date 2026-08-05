@@ -56,7 +56,7 @@ export function LoginScreen() {
 
       await finalize(data.accessToken, data.refreshToken, data.tenantSlug, data.user);
     } catch (err: any) {
-      setError(err.response?.data?.message ?? 'E-mail ou senha incorretos');
+      setError(err.response ? err.response.data?.message ?? 'E-mail ou senha incorretos' : 'Sem conexão com a internet. Verifique sua conexão e tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -73,7 +73,7 @@ export function LoginScreen() {
       );
       await finalize(data.accessToken, data.refreshToken, slug, data.user);
     } catch (err: any) {
-      setError(err.response?.data?.message ?? 'Erro ao entrar na escola');
+      setError(err.response ? err.response.data?.message ?? 'Erro ao entrar na escola' : 'Sem conexão com a internet. Verifique sua conexão e tente novamente.');
       setTenantOptions([]);
     } finally {
       setLoading(false);

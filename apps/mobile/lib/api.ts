@@ -14,14 +14,29 @@ api.interceptors.request.use(async (config) => {
 
 let refreshing: Promise<string> | null = null;
 let _onSessionExpired: (() => void) | null = null;
+let _onNetworkError: (() => void) | null = null;
+let notifyingNetworkError = false;
 
 export function setSessionExpiredHandler(fn: () => void) {
   _onSessionExpired = fn;
 }
 
+export function setNetworkErrorHandler(fn: () => void) {
+  _onNetworkError = fn;
+}
+
 api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
+    if (!error.response) {
+      if (!notifyingNetworkError) {
+        notifyingNetworkError = true;
+        _onNetworkError?.();
+        setTimeout(() => { notifyingNetworkError = false; }, 3000);
+      }
+      return Promise.reject(error);
+    }
+
     const original = error.config as any;
     if (error.response?.status !== 401 || original._retry) {
       return Promise.reject(error);
