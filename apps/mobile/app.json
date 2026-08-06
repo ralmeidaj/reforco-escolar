@@ -12,7 +12,7 @@
       "backgroundColor": "#2563EB"
     },
     "notification": {
-      "icon": "./assets/icon.png",
+      "icon": "./assets/android-icon-monochrome.png",
       "color": "#2563EB"
     },
     "userInterfaceStyle": "light",
@@ -23,9 +23,8 @@
     "android": {
       "package": "com.reforcos.escolares",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
@@ -55,7 +54,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png"
+          "icon": "./assets/android-icon-monochrome.png"
         }
       ]
     ],
