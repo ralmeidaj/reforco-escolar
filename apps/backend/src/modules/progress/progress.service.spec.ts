@@ -100,11 +100,11 @@ describe('ProgressService', () => {
       gradeRepo.save.mockImplementation((v: any) => Promise.resolve({ id: 'g-1', ...v }));
 
       const result = await service.createGrade(tenantId, teacherId, {
-        studentId, subject: 'Matemática', value: 8.5,
+        studentId, subject: 'Matemática', unidade: '1ª Unidade', value: 8.5,
       });
 
       expect(gradeRepo.create).toHaveBeenCalledWith(expect.objectContaining({
-        tenantId, studentId, recordedBy: teacherId, subject: 'Matemática', value: 8.5,
+        tenantId, studentId, recordedBy: teacherId, subject: 'Matemática', unidade: '1ª Unidade', value: 8.5,
       }));
       expect(result.id).toBe('g-1');
     });

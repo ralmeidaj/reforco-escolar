@@ -14,6 +14,7 @@ export class StudentGrade {
   @Column({ name: 'recorded_by' }) recordedBy: string;
   @ManyToOne(() => User, { onDelete: 'CASCADE' }) @JoinColumn({ name: 'recorded_by' }) recorder: User;
   @Column() subject: string;
+  @Column() unidade: string;
   @Column({ type: 'numeric', precision: 4, scale: 2, transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) } })
   value: number;
   @CreateDateColumn({ name: 'created_at' }) createdAt: Date;

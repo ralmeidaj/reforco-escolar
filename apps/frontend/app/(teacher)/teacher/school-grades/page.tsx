@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/app/lib/api';
 import { cn } from '@/app/lib/utils';
 
-interface Student { id: string; name: string; email: string }
-interface Grade   { id: string; subject: string; value: number; createdAt: string }
+interface Student    { id: string; name: string; email: string }
+interface Grade      { id: string; subject: string; unidade: string; value: number; createdAt: string }
+interface Enrollment { id: string; subject: { id: string; name: string } }
 
 export default function SchoolGradesPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -15,8 +16,10 @@ export default function SchoolGradesPage() {
   const [selected, setSelected] = useState<Student | null>(null);
   const [grades, setGrades]     = useState<Grade[]>([]);
   const [loadingGrades, setLoadingGrades] = useState(false);
+  const [enrolledSubjects, setEnrolledSubjects] = useState<string[]>([]);
 
   const [subject, setSubject] = useState('');
+  const [unidade, setUnidade] = useState('');
   const [value, setValue]     = useState('');
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState('');
@@ -45,11 +48,14 @@ export default function SchoolGradesPage() {
     setError('');
     loadGrades(student.id);
     setMobileView('grades');
+    api.get<Enrollment[]>(`/enrollments?studentId=${student.id}`)
+      .then(({ data }) => setEnrolledSubjects(data.map((e) => e.subject.name)))
+      .catch(() => setEnrolledSubjects([]));
   }
 
   async function addGrade() {
-    if (!selected || !subject.trim() || !value.trim()) {
-      setError('Preencha disciplina e nota');
+    if (!selected || !subject.trim() || !unidade.trim() || !value.trim()) {
+      setError('Preencha disciplina, unidade e nota');
       return;
     }
     const num = Number(value.replace(',', '.'));
@@ -60,8 +66,8 @@ export default function SchoolGradesPage() {
     setSaving(true);
     setError('');
     try {
-      await api.post('/progress/grades', { studentId: selected.id, subject: subject.trim(), value: num });
-      setSubject(''); setValue('');
+      await api.post('/progress/grades', { studentId: selected.id, subject: subject.trim(), unidade: unidade.trim(), value: num });
+      setSubject(''); setUnidade(''); setValue('');
       await loadGrades(selected.id);
     } catch (err: any) {
       setError(err.response?.data?.message ?? 'Erro ao registrar nota');
@@ -165,13 +171,27 @@ export default function SchoolGradesPage() {
                   <label className="mb-1 block text-xs font-medium text-gray-500">Disciplina</label>
                   <input
                     type="text"
+                    list="enrolled-subjects"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                     placeholder="Ex: Matemática"
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400"
                   />
+                  <datalist id="enrolled-subjects">
+                    {enrolledSubjects.map((s) => <option key={s} value={s} />)}
+                  </datalist>
                 </div>
-                <div className="w-full sm:w-28">
+                <div className="w-full sm:w-32">
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Unidade</label>
+                  <input
+                    type="text"
+                    value={unidade}
+                    onChange={(e) => setUnidade(e.target.value)}
+                    placeholder="Ex: 1ª Unidade"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400"
+                  />
+                </div>
+                <div className="w-full sm:w-24">
                   <label className="mb-1 block text-xs font-medium text-gray-500">Nota</label>
                   <input
                     type="text"
@@ -208,7 +228,7 @@ export default function SchoolGradesPage() {
                   {grades.map((g) => (
                     <div key={g.id} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{g.subject}</p>
+                        <p className="text-sm font-medium text-gray-900">{g.subject} <span className="text-gray-400 font-normal">· {g.unidade}</span></p>
                         <p className="text-xs text-gray-400">{new Date(g.createdAt).toLocaleDateString('pt-BR')}</p>
                       </div>
                       <div className="flex items-center gap-3">

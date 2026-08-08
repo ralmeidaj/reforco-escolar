@@ -48,6 +48,7 @@ export class ProgressService {
       studentId: dto.studentId,
       recordedBy,
       subject: dto.subject,
+      unidade: dto.unidade,
       value: dto.value,
     });
     return this.gradeRepo.save(grade);

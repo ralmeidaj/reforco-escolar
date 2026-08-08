@@ -140,6 +140,7 @@ Row-level tenancy com `tenant_id` em todas as tabelas. O tenant é identificado 
 0015_room_schedules
 0016_school_task_captures
 0017_student_grades
+0018_student_grades_unidade
 ```
 
 ## Hospedagem recomendada

@@ -153,7 +153,7 @@ describe('School Task Captures & Student Grades E2E', () => {
         .post('/progress/grades')
         .set('Authorization', `Bearer ${teacherToken}`)
         .set('X-Tenant-Slug', slug)
-        .send({ studentId, subject: 'Português', value: 9.5 })
+        .send({ studentId, subject: 'Português', unidade: '1ª Unidade', value: 9.5 })
         .expect(201);
 
       expect(Number(grade.value)).toBe(9.5);
@@ -175,7 +175,7 @@ describe('School Task Captures & Student Grades E2E', () => {
         .post('/progress/grades')
         .set('Authorization', `Bearer ${studentToken}`)
         .set('X-Tenant-Slug', slug)
-        .send({ studentId, subject: 'Português', value: 9.5 })
+        .send({ studentId, subject: 'Português', unidade: '1ª Unidade', value: 9.5 })
         .expect(403);
     });
 
@@ -187,7 +187,7 @@ describe('School Task Captures & Student Grades E2E', () => {
         .post('/progress/grades')
         .set('Authorization', `Bearer ${adminToken}`)
         .set('X-Tenant-Slug', slug)
-        .send({ studentId, subject: 'Ciências', value: 7 })
+        .send({ studentId, subject: 'Ciências', unidade: '2ª Unidade', value: 7 })
         .expect(201);
 
       await request(app.getHttpServer())
@@ -220,7 +220,7 @@ describe('School Task Captures & Student Grades E2E', () => {
         .post('/progress/grades')
         .set('Authorization', `Bearer ${teacherA}`)
         .set('X-Tenant-Slug', 'grades-iso-a')
-        .send({ studentId: studentIdA, subject: 'Nota secreta', value: 10 })
+        .send({ studentId: studentIdA, subject: 'Nota secreta', unidade: '1ª Unidade', value: 10 })
         .expect(201);
 
       const { body: crossLookup } = await request(app.getHttpServer())

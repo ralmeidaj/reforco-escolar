@@ -333,6 +333,7 @@
     .sc6 { background: #0d9488; }
     .sc7 { background: #0284c7; }
     .sc8 { background: #4b5563; }
+    .sc9 { background: #4338ca; }
 
     /* ── ROADMAP ─────────────────────────────────────────── */
     .roadmap {
@@ -681,6 +682,8 @@
               <span class="table-chip">session_notes</span>
               <span class="table-chip">student_progress</span>
               <span class="table-chip">tasks</span>
+              <span class="table-chip">school_task_captures</span>
+              <span class="table-chip">student_grades</span>
             </div>
           </div>
           <div class="features-grid">
@@ -690,6 +693,8 @@
             <div class="feature-item">Linha do tempo de evolução por disciplina</div>
             <div class="feature-item">Nível do aluno: iniciante → básico → intermediário → avançado</div>
             <div class="feature-item">Alerta automático para responsável em 2 faltas seguidas</div>
+            <div class="feature-item">Aluno fotografa tarefa da escola regular; IA sugere os dados, aluno revisa e confirma</div>
+            <div class="feature-item">Professor/admin registra nota que o aluno tirou na escola regular</div>
           </div>
         </div>
       </div>
@@ -801,6 +806,35 @@
         </div>
       </div>
 
+      <!-- SPEC 9 -->
+      <div class="spec-card">
+        <div class="spec-header">
+          <div class="spec-num sc9">9</div>
+          <div class="spec-title-block">
+            <div>
+              <h3>IA Pedagógica</h3>
+              <div class="spec-subtitle">Panorama do aluno, agrupamento por assunto e geração de atividades</div>
+            </div>
+          </div>
+        </div>
+        <div class="spec-body">
+          <div class="tables-row">
+            <div class="tables-label">Tabelas</div>
+            <div class="table-chips">
+              <span class="table-chip">ai_student_panoramas</span>
+              <span class="table-chip">ai_activity_suggestions</span>
+            </div>
+          </div>
+          <div class="features-grid">
+            <div class="feature-item">Panorama do aluno: pontos fortes, assuntos a reforçar e nunca estudados</div>
+            <div class="feature-item">Agrupamento de alunos por assunto em comum (mesmo entre turmas diferentes)</div>
+            <div class="feature-item">Geração de atividades/quizzes personalizados; professor revisa antes de liberar</div>
+            <div class="feature-item">Sem OPENAI_API_KEY → fallback heurístico (sem análise semântica)</div>
+            <div class="feature-item">Panorama recalculado via cron diário</div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -841,6 +875,7 @@
         <h4>Semana 9+</h4>
         <ul>
           <li>Spec 8 — Super Admin</li>
+          <li>Spec 9 — IA Pedagógica</li>
           <li>Billing SaaS por tenant</li>
           <li>Onboarding self-service</li>
         </ul>
@@ -905,7 +940,7 @@
 <!-- ═══════════════════════════════ FOOTER ═══════════════════════════════ -->
 <footer>
   <strong>Reforços Escolares — Proposta de Arquitetura</strong><br>
-  Gerado em maio de 2026 · Stack: NestJS + Next.js 15 + PostgreSQL · Hosting: Hetzner VPS ~€3/mês
+  Gerado em maio de 2026 · Atualizado em agosto de 2026 · Stack: NestJS + Next.js 15 + PostgreSQL · Hosting: Hetzner VPS ~€3/mês
 </footer>
 
 </body>

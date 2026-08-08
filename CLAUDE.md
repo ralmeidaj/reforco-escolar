@@ -336,6 +336,7 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 | `0015_room_schedules` | room_schedules, room_schedule_teachers (grade semanal por sala) |
 | `0016_school_task_captures` | school_task_captures; corrige colunas ausentes em activity_submissions (file_type, comment) |
 | `0017_student_grades` | student_grades (notas da escola regular) |
+| `0018_student_grades_unidade` | adiciona coluna `unidade` (bimestre/etapa) em student_grades |
 
 ## Specs do produto
 
@@ -406,7 +407,7 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 - **Tarefas com prazo:** campo `due_date` em `tasks`; sistema monitora e dispara lembretes antes do vencimento para aluno e professor
 - Tarefas do tipo `trabalho`, `eureka` e `trilha` além do tipo padrão
 - **Captura de tarefa da escola regular (IA):** aluno fotografa o print da tela do app/portal da escola regular; `POST /tasks/school-captures/extract` salva a imagem e, se `OPENAI_API_KEY` estiver configurada, usa visão multimodal (`gpt-4o-mini` + `image_url`) para sugerir disciplina/título/descrição/prazo — sem a chave, retorna só a imagem sem sugestão. **O aluno revisa e edita os campos em tela antes de confirmar** (`POST /tasks/school-captures/confirm`); só aí o registro é salvo em `school_task_captures` (tabela própria, não em `tasks` — sem vínculo obrigatório de professor). Visível para o professor de reforço numa seção dedicada (`GET /tasks/school-captures`, tenant-wide)
-- **Notas da escola regular:** professor ou `tenant_admin` registra manualmente (sem foto/IA) a nota que o aluno tirou na escola regular — disciplina em texto livre (não vinculada ao cadastro de `subjects` do reforço) + valor numérico (`student_grades`, módulo `progress`). Distinto de qualquer avaliação de atividade do próprio reforço (que hoje não tem nota numérica, só o nível qualitativo de `student_progress`). Endpoints em `POST/DELETE /progress/grades`, `GET /progress/grades/student/:id`; telas web em `/teacher/school-grades` e `/admin/school-grades` — aluno não registra, só professor/admin
+- **Notas da escola regular:** professor ou `tenant_admin` registra manualmente (sem foto/IA) a nota que o aluno tirou na escola regular — disciplina em texto livre (não vinculada ao cadastro de `subjects` do reforço, já que a escola regular pode ter disciplinas diferentes) + unidade/bimestre (texto livre, ex.: "1ª Unidade") + valor numérico (`student_grades`, módulo `progress`). Distinto de qualquer avaliação de atividade do próprio reforço (que hoje não tem nota numérica, só o nível qualitativo de `student_progress`). No formulário web, o campo Disciplina tem autocomplete (`<datalist>`) com as disciplinas em que o aluno já está matriculado no reforço (via `GET /enrollments?studentId=`), mas aceita texto livre além dessas. Endpoints em `POST/DELETE /progress/grades`, `GET /progress/grades/student/:id`; telas web em `/teacher/school-grades` e `/admin/school-grades` — aluno não registra, só professor/admin
 
 ---
 
