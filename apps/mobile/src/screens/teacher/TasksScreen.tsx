@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Alert, Modal, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Alert, Modal, Image, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
 import { Card, Badge, Button, SkeletonCard, EmptyState, SectionHeader, colors } from '../../../components/ui';
 
 interface Student { id: string; name: string; }
 interface Task { id: string; title: string; description: string | null; type: string; dueDate: string | null; status: string; student?: { name: string }; }
+interface Capture {
+  id: string;
+  subject: string | null;
+  title: string;
+  description: string | null;
+  dueDate: string | null;
+  imageUrl: string;
+  student?: { name: string };
+}
 
 const TYPES = ['padrao', 'trabalho', 'eureka', 'trilha'] as const;
 const TYPE_LABELS: Record<string, string> = { padrao: 'Padrão', trabalho: 'Trabalho', eureka: 'Eureka', trilha: 'Trilha' };
@@ -64,12 +73,28 @@ function DatePickerInput({ value, onChange }: { value: string; onChange: (v: str
 }
 
 export function TasksScreen() {
+  const [section, setSection] = useState<'minhas' | 'capturas'>('minhas');
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const [captures, setCaptures] = useState<Capture[]>([]);
+  const [loadingCaptures, setLoadingCaptures] = useState(true);
+
+  useEffect(() => { if (section === 'capturas') loadCaptures(); }, [section]);
+
+  const loadCaptures = useCallback(async () => {
+    setLoadingCaptures(true);
+    try {
+      const res = await api.get('/tasks/school-captures');
+      setCaptures(res.data);
+    } catch {}
+    setLoadingCaptures(false);
+  }, []);
 
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
@@ -94,7 +119,11 @@ export function TasksScreen() {
 
   useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
 
-  const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if (section === 'minhas') await load(); else await loadCaptures();
+    setRefreshing(false);
+  };
 
   async function create() {
     if (!title.trim() || !studentId) {
@@ -178,32 +207,71 @@ export function TasksScreen() {
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
         <Text style={s.headerTitle}>Tarefas</Text>
-        <TouchableOpacity onPress={() => setCreating(true)} style={s.addBtn}>
-          <Text style={s.addBtnText}>+ Nova</Text>
-        </TouchableOpacity>
+        {section === 'minhas' && (
+          <TouchableOpacity onPress={() => setCreating(true)} style={s.addBtn}>
+            <Text style={s.addBtnText}>+ Nova</Text>
+          </TouchableOpacity>
+        )}
       </View>
+
+      <View style={s.segmentRow}>
+        {(['minhas', 'capturas'] as const).map((sec) => (
+          <TouchableOpacity key={sec} onPress={() => setSection(sec)} style={[s.segment, section === sec && s.segmentActive]}>
+            <Text style={[s.segmentText, section === sec && s.segmentTextActive]}>
+              {sec === 'minhas' ? 'Minhas tarefas' : 'Capturas dos alunos'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <ScrollView
         contentContainerStyle={s.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {loading
-          ? [1, 2, 3].map((i) => <SkeletonCard key={i} />)
-          : <>
-              <SectionHeader title={`Pendentes (${pending.length})`} />
-              {pending.length === 0
-                ? <EmptyState icon="✅" message="Nenhuma tarefa pendente" />
-                : pending.map((t) => <TaskItem key={t.id} task={t} onDelete={remove} />)
-              }
-              {done.length > 0 && (
-                <>
-                  <SectionHeader title={`Concluídas (${done.length})`} />
-                  {done.map((t) => <TaskItem key={t.id} task={t} onDelete={remove} />)}
-                </>
-              )}
-            </>
-        }
+        {section === 'minhas' ? (
+          loading
+            ? [1, 2, 3].map((i) => <SkeletonCard key={i} />)
+            : <>
+                <SectionHeader title={`Pendentes (${pending.length})`} />
+                {pending.length === 0
+                  ? <EmptyState icon="✅" message="Nenhuma tarefa pendente" />
+                  : pending.map((t) => <TaskItem key={t.id} task={t} onDelete={remove} />)
+                }
+                {done.length > 0 && (
+                  <>
+                    <SectionHeader title={`Concluídas (${done.length})`} />
+                    {done.map((t) => <TaskItem key={t.id} task={t} onDelete={remove} />)}
+                  </>
+                )}
+              </>
+        ) : (
+          loadingCaptures
+            ? [1, 2, 3].map((i) => <SkeletonCard key={i} />)
+            : captures.length === 0
+              ? <EmptyState icon="🏫" message="Nenhuma captura de tarefa da escola ainda" />
+              : captures.map((c) => <CaptureItem key={c.id} capture={c} />)
+        )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function CaptureItem({ capture }: { capture: Capture }) {
+  return (
+    <Card style={{ marginBottom: 8 }}>
+      <View style={{ flexDirection: 'row' }}>
+        <Image source={{ uri: capture.imageUrl }} style={s.thumb} />
+        <View style={{ flex: 1 }}>
+          {capture.student && <Text style={s.taskStudent}>{capture.student.name}</Text>}
+          {capture.subject && <Text style={s.captureSubject}>{capture.subject}</Text>}
+          <Text style={s.taskTitle}>{capture.title}</Text>
+          {capture.description && <Text style={s.captureDesc}>{capture.description}</Text>}
+          {capture.dueDate && (
+            <Text style={s.taskDue}>Prazo: {new Date(capture.dueDate).toLocaleDateString('pt-BR')}</Text>
+          )}
+        </View>
+      </View>
+    </Card>
   );
 }
 
@@ -239,6 +307,14 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '700', color: colors.text, flex: 1 },
   addBtn: { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
   addBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  segmentRow: { flexDirection: 'row', backgroundColor: '#fff', padding: 8, gap: 8, borderBottomWidth: 1, borderColor: colors.border },
+  segment: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8, backgroundColor: '#F3F4F6' },
+  segmentActive: { backgroundColor: colors.primary },
+  segmentText: { fontSize: 13, fontWeight: '600', color: colors.muted },
+  segmentTextActive: { color: '#fff' },
+  thumb: { width: 48, height: 48, borderRadius: 8, marginRight: 10, backgroundColor: colors.border },
+  captureSubject: { fontSize: 11, fontWeight: '700', color: colors.primary, textTransform: 'uppercase', marginTop: 2 },
+  captureDesc: { fontSize: 13, color: colors.muted, marginTop: 2 },
   content: { padding: 16, paddingBottom: 40 },
   label: { fontSize: 13, fontWeight: '600', color: colors.muted, marginBottom: 6, marginTop: 12 },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 10, fontSize: 14, color: colors.text },

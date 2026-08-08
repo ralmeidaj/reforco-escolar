@@ -220,7 +220,7 @@ describe('AuthService', () => {
 
       const result = await service.loginMobile({ email: 'joao@test.com', password: 'senha123' });
 
-      expect(result.accessToken).toBe('mock.jwt.token');
+      expect((result as any).accessToken).toBe('mock.jwt.token');
       expect((result as any).tenantSlug).toBe('escola-silva');
     });
 

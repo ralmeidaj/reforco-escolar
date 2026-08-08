@@ -1,14 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, Image, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../../../lib/api';
-import { Button, colors } from '../../../components/ui';
+import { Card, Button, EmptyState, SkeletonCard, colors } from '../../../components/ui';
+
+interface PendingTask { id: string; title: string; dueDate: string | null }
 
 export function ActivityScreen() {
+  const [tasks, setTasks] = useState<PendingTask[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
+  const [selectedTask, setSelectedTask] = useState<PendingTask | null>(null);
   const [image, setImage] = useState<{ uri: string; type: string; name: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    api.get('/tasks/me')
+      .then((res) => setTasks(res.data.filter((t: any) => !t.done)))
+      .catch(() => {})
+      .finally(() => setLoadingTasks(false));
+  }, []);
 
   async function pickFromGallery() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -41,16 +53,19 @@ export function ActivityScreen() {
   }
 
   async function upload() {
-    if (!image) return;
+    if (!image || !selectedTask) return;
     setUploading(true);
     try {
       const form = new FormData();
       form.append('file', { uri: image.uri, type: image.type, name: image.name } as any);
+      form.append('taskId', selectedTask.id);
       await api.post('/activity-submissions', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setDone(true);
       setImage(null);
+      setTasks((prev) => prev.filter((t) => t.id !== selectedTask.id));
+      setSelectedTask(null);
       Alert.alert('Enviado!', 'Sua atividade foi enviada com sucesso.');
     } catch (e: any) {
       Alert.alert('Erro', e.response?.data?.message ?? 'Falha ao enviar. Tente novamente.');
@@ -58,11 +73,41 @@ export function ActivityScreen() {
     setUploading(false);
   }
 
+  if (!selectedTask) {
+    return (
+      <SafeAreaView style={s.safe}>
+        <ScrollView contentContainerStyle={s.content}>
+          <Text style={s.title}>Enviar Atividade</Text>
+          <Text style={s.sub}>Escolha a tarefa que você concluiu e corrigiu</Text>
+
+          {loadingTasks
+            ? [1, 2, 3].map((i) => <SkeletonCard key={i} height={64} />)
+            : tasks.length === 0
+              ? <EmptyState icon="🎉" message="Nenhuma tarefa pendente para enviar atividade" />
+              : tasks.map((t) => (
+                  <TouchableOpacity key={t.id} onPress={() => setSelectedTask(t)}>
+                    <Card style={{ marginBottom: 8 }}>
+                      <Text style={s.taskTitle}>{t.title}</Text>
+                      {t.dueDate && (
+                        <Text style={s.taskDue}>Prazo: {new Date(t.dueDate).toLocaleDateString('pt-BR')}</Text>
+                      )}
+                    </Card>
+                  </TouchableOpacity>
+                ))
+          }
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.content}>
+        <TouchableOpacity onPress={() => setSelectedTask(null)} style={{ marginBottom: 8 }}>
+          <Text style={s.back}>← Trocar tarefa</Text>
+        </TouchableOpacity>
         <Text style={s.title}>Enviar Atividade</Text>
-        <Text style={s.sub}>Fotografe ou selecione a atividade feita e corrigida</Text>
+        <Text style={s.sub}>{selectedTask.title}</Text>
 
         {image ? (
           <View style={s.previewBox}>
@@ -111,6 +156,9 @@ const s = StyleSheet.create({
   content: { padding: 24, paddingBottom: 40 },
   title: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: 4 },
   sub: { fontSize: 14, color: colors.muted, marginBottom: 24 },
+  back: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+  taskTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
+  taskDue: { fontSize: 12, color: colors.muted, marginTop: 2 },
   previewBox: { borderRadius: 12, overflow: 'hidden', marginBottom: 16 },
   preview: { width: '100%', height: 260 },
   removeBtn: { backgroundColor: '#FEE2E2', padding: 8, alignItems: 'center' },

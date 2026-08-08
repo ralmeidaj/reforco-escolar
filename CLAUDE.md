@@ -179,8 +179,8 @@ Motivo da câmera nativa: upload de foto da atividade feita e corrigida (aluno) 
 ### Câmera e uploads
 - `expo-camera` para captura de foto
 - `expo-image-picker` para seleção da galeria
-- Upload via `multipart/form-data` para `POST /attendance/activity-submissions`
-- Arquivo armazenado no Cloudflare R2; URL retornada e salva em `activity_submissions.file_url`
+- Upload via `multipart/form-data` para `POST /activity-submissions` (não `/attendance/activity-submissions` — o `TasksController` não tem prefixo) e `POST /tasks/school-captures/extract`
+- **Storage ainda é disco local (`MulterModule.register({ dest: './uploads' })`), não Cloudflare R2** — apesar do R2 estar na stack documentada e as variáveis `R2_*` existirem no `.env`, nenhum código do backend as lê hoje. Ao implementar R2 de verdade, atualizar esta seção
 
 ### Push notifications
 - `expo-notifications` + Expo Push Notification Service (gratuito)
@@ -334,6 +334,8 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 | `0013_session_student_nullable` | student_id nullable em sessions (walk-in) |
 | `0014_room_assignments` | room_assignments (N:M professor ↔ sala) |
 | `0015_room_schedules` | room_schedules, room_schedule_teachers (grade semanal por sala) |
+| `0016_school_task_captures` | school_task_captures; corrige colunas ausentes em activity_submissions (file_type, comment) |
+| `0017_student_grades` | student_grades (notas da escola regular) |
 
 ## Specs do produto
 
@@ -390,7 +392,7 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 ---
 
 ### Spec 4 — Presença e Acompanhamento Pedagógico (MVP)
-**Tabelas:** `attendances`, `session_notes`, `student_progress`, `tasks`, `study_logs`, `activity_submissions`
+**Tabelas:** `attendances`, `session_notes`, `student_progress`, `tasks`, `study_logs`, `activity_submissions`, `school_task_captures`, `student_grades`
 
 **Funcionalidades:**
 - Registro de presença: `presente` / `ausente` / `justificado`
@@ -400,9 +402,11 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 - Nível do aluno: `iniciante` → `básico` → `intermediário` → `avançado`
 - Alerta automático para responsável em 2 faltas seguidas
 - **Diário de estudo:** aluno registra assunto estudado + quantidade de páginas lidas por sessão (`study_logs`)
-- **Envio de atividade:** aluno faz upload (foto ou PDF) da atividade após concluída e corrigida (`activity_submissions`); armazenado no Cloudflare R2
+- **Envio de atividade:** aluno escolhe uma tarefa pendente e faz upload (foto) da atividade após concluída e corrigida (`activity_submissions`, vinculado por `taskId`); hoje em disco local (`./uploads`), não R2 real (ver seção de Storage)
 - **Tarefas com prazo:** campo `due_date` em `tasks`; sistema monitora e dispara lembretes antes do vencimento para aluno e professor
 - Tarefas do tipo `trabalho`, `eureka` e `trilha` além do tipo padrão
+- **Captura de tarefa da escola regular (IA):** aluno fotografa o print da tela do app/portal da escola regular; `POST /tasks/school-captures/extract` salva a imagem e, se `OPENAI_API_KEY` estiver configurada, usa visão multimodal (`gpt-4o-mini` + `image_url`) para sugerir disciplina/título/descrição/prazo — sem a chave, retorna só a imagem sem sugestão. **O aluno revisa e edita os campos em tela antes de confirmar** (`POST /tasks/school-captures/confirm`); só aí o registro é salvo em `school_task_captures` (tabela própria, não em `tasks` — sem vínculo obrigatório de professor). Visível para o professor de reforço numa seção dedicada (`GET /tasks/school-captures`, tenant-wide)
+- **Notas da escola regular:** professor ou `tenant_admin` registra manualmente (sem foto/IA) a nota que o aluno tirou na escola regular — disciplina em texto livre (não vinculada ao cadastro de `subjects` do reforço) + valor numérico (`student_grades`, módulo `progress`). Distinto de qualquer avaliação de atividade do próprio reforço (que hoje não tem nota numérica, só o nível qualitativo de `student_progress`). Endpoints em `POST/DELETE /progress/grades`, `GET /progress/grades/student/:id`; telas web em `/teacher/school-grades` e `/admin/school-grades` — aluno não registra, só professor/admin
 
 ---
 

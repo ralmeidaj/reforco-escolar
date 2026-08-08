@@ -1,14 +1,15 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, Request,
+  Controller, Get, Post, Patch, Delete, Body, Param, Query, Request,
   UseInterceptors, UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiParam, ApiConsumes } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiConsumes } from '@nestjs/swagger';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { CreateStudyLogDto } from './dto/create-study-log.dto';
 import { CreateActivitySubmissionDto } from './dto/create-activity-submission.dto';
+import { ConfirmSchoolTaskCaptureDto } from './dto/confirm-school-task-capture.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 
 @ApiTags('Tasks')
@@ -122,5 +123,40 @@ export class TasksController {
   @ApiResponse({ status: 200, description: 'List of submissions' })
   findSubmissions(@Request() req: any, @Param('taskId') taskId: string) {
     return this.tasksService.findSubmissionsByTask(req.tenant.id, taskId);
+  }
+
+  @Post('tasks/school-captures/extract')
+  @Roles('student')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Extrai dados de uma tarefa da escola regular via IA a partir de uma foto' })
+  @ApiResponse({ status: 201, description: 'Imagem salva; extração da IA (ou null se sem IA/falha)' })
+  async extractSchoolCapture(@Request() req: any, @UploadedFile() file: any) {
+    return this.tasksService.extractSchoolTaskCapture(req.tenant.id, file);
+  }
+
+  @Post('tasks/school-captures/confirm')
+  @Roles('student')
+  @ApiOperation({ summary: 'Confirma e salva a captura de tarefa da escola após revisão do aluno' })
+  @ApiResponse({ status: 201, description: 'Captura salva' })
+  async confirmSchoolCapture(@Request() req: any, @Body() dto: ConfirmSchoolTaskCaptureDto) {
+    return this.tasksService.confirmSchoolTaskCapture(req.tenant.id, req.user.sub, dto);
+  }
+
+  @Get('tasks/school-captures/me')
+  @Roles('student')
+  @ApiOperation({ summary: 'Lista as capturas de tarefa da escola do aluno autenticado' })
+  @ApiResponse({ status: 200 })
+  findMySchoolCaptures(@Request() req: any) {
+    return this.tasksService.findSchoolTaskCaptures(req.tenant.id, req.user.sub);
+  }
+
+  @Get('tasks/school-captures')
+  @Roles('teacher', 'tenant_admin')
+  @ApiOperation({ summary: 'Lista capturas de tarefa da escola de todos os alunos (professor/admin)' })
+  @ApiQuery({ name: 'studentId', required: false })
+  @ApiResponse({ status: 200 })
+  findSchoolCaptures(@Request() req: any, @Query('studentId') studentId?: string) {
+    return this.tasksService.findSchoolTaskCaptures(req.tenant.id, studentId);
   }
 }

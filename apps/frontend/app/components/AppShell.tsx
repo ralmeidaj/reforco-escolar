@@ -11,7 +11,7 @@ import { NotificationBell } from '@/app/components/NotificationBell';
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
   Calendar, DoorOpen, Monitor, CheckSquare, Wallet, BarChart2, Settings,
-  FileText, MessageCircle, TrendingUp, Brain, UserPlus,
+  FileText, MessageCircle, TrendingUp, Brain, UserPlus, Award,
 } from 'lucide-react';
 
 interface Me { name: string; email: string; role: string }
@@ -25,6 +25,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/subjects',     label: 'Disciplinas',   icon: BookOpen },
   { href: '/admin/groups',       label: 'Turmas',        icon: GraduationCap },
   { href: '/admin/enrollments',  label: 'Matrículas',    icon: UserPlus },
+  { href: '/admin/school-grades', label: 'Notas da escola', icon: Award },
   { section: true,               label: 'Operacional' },
   { href: '/admin/schedule',     label: 'Agendamento',   icon: Calendar },
   { href: '/admin/rooms',        label: 'Salas',         icon: DoorOpen },
@@ -40,6 +41,7 @@ const teacherNav: NavItem[] = [
   { href: '/teacher/attendance',   label: 'Presença',      icon: CheckSquare },
   { href: '/teacher/tasks',        label: 'Tarefas',       icon: ClipboardList },
   { href: '/teacher/notes',        label: 'Notas de aula', icon: FileText },
+  { href: '/teacher/school-grades', label: 'Notas da escola', icon: Award },
   { href: '/teacher/students',     label: 'Alunos',        icon: Users },
   { href: '/teacher/chat',         label: 'Chat',          icon: MessageCircle },
   { href: '/teacher/ai',           label: 'IA Pedagógica', icon: Brain },

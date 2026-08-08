@@ -1,30 +1,37 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { NotFoundException } from '@nestjs/common';
 import { ProgressService } from './progress.service';
 import { StudentProgress } from './student-progress.entity';
+import { StudentGrade } from './student-grade.entity';
 
 const makeRepo = () => ({
   find: jest.fn(),
   findOne: jest.fn(),
   save: jest.fn(),
   create: jest.fn((dto) => dto),
+  remove: jest.fn(),
 });
 
 describe('ProgressService', () => {
   let service: ProgressService;
   let repo: ReturnType<typeof makeRepo>;
+  let gradeRepo: ReturnType<typeof makeRepo>;
 
   const tenantId = 'tenant-1';
   const studentId = 'student-1';
   const subjectId = 'subject-1';
+  const teacherId = 'teacher-1';
 
   beforeEach(async () => {
     repo = makeRepo();
+    gradeRepo = makeRepo();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProgressService,
         { provide: getRepositoryToken(StudentProgress), useValue: repo },
+        { provide: getRepositoryToken(StudentGrade), useValue: gradeRepo },
       ],
     }).compile();
 
@@ -85,6 +92,49 @@ describe('ProgressService', () => {
       repo.findOne.mockResolvedValue(null);
       const result = await service.findByStudentAndSubject(tenantId, studentId, subjectId);
       expect(result).toBeNull();
+    });
+  });
+
+  describe('createGrade', () => {
+    it('cria a nota com recordedBy vindo de fora do dto', async () => {
+      gradeRepo.save.mockImplementation((v: any) => Promise.resolve({ id: 'g-1', ...v }));
+
+      const result = await service.createGrade(tenantId, teacherId, {
+        studentId, subject: 'Matemática', value: 8.5,
+      });
+
+      expect(gradeRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+        tenantId, studentId, recordedBy: teacherId, subject: 'Matemática', value: 8.5,
+      }));
+      expect(result.id).toBe('g-1');
+    });
+  });
+
+  describe('findGradesByStudent', () => {
+    it('filtra por tenant e aluno', async () => {
+      const grades = [{ id: 'g-1', studentId }];
+      gradeRepo.find.mockResolvedValue(grades);
+
+      const result = await service.findGradesByStudent(tenantId, studentId);
+
+      expect(gradeRepo.find).toHaveBeenCalledWith(expect.objectContaining({ where: { tenantId, studentId } }));
+      expect(result).toEqual(grades);
+    });
+  });
+
+  describe('deleteGrade', () => {
+    it('remove a nota quando encontrada', async () => {
+      const grade = { id: 'g-1', tenantId };
+      gradeRepo.findOne.mockResolvedValue(grade);
+
+      await service.deleteGrade(tenantId, 'g-1');
+
+      expect(gradeRepo.remove).toHaveBeenCalledWith(grade);
+    });
+
+    it('lança NotFoundException quando não encontrada', async () => {
+      gradeRepo.findOne.mockResolvedValue(null);
+      await expect(service.deleteGrade(tenantId, 'ghost')).rejects.toThrow(NotFoundException);
     });
   });
 });
