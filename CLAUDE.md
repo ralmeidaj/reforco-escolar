@@ -179,7 +179,7 @@ Motivo da câmera nativa: upload de foto da atividade feita e corrigida (aluno) 
 ### Câmera e uploads
 - `expo-camera` para captura de foto
 - `expo-image-picker` para seleção da galeria
-- Upload via `multipart/form-data` para `POST /activity-submissions` (não `/attendance/activity-submissions` — o `TasksController` não tem prefixo) e `POST /tasks/school-captures/extract`
+- Upload via `multipart/form-data` para `POST /activity-submissions` (não `/attendance/activity-submissions` — o `TasksController` não tem prefixo), `POST /tasks/school-captures/extract` e `POST /ai/activity-corrections`
 - **Storage ainda é disco local (`MulterModule.register({ dest: './uploads' })`), não Cloudflare R2** — apesar do R2 estar na stack documentada e as variáveis `R2_*` existirem no `.env`, nenhum código do backend as lê hoje. Ao implementar R2 de verdade, atualizar esta seção
 
 ### Push notifications
@@ -313,7 +313,7 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 | 6 | Financeiro | `src/modules/finance/` (plans, student-plans, payments) |
 | 7 | Relatórios e Dashboards | `src/modules/reports/` (materialized view tenant_kpis, cron de refresh) |
 | 8 | Super Admin — Plataforma | `src/modules/super-admin/` |
-| 9 | IA Pedagógica | `src/modules/ai/` (panoramas, suggestions, cron, agrupamentos) |
+| 9 | IA Pedagógica | `src/modules/ai/` (panoramas, suggestions, correções de atividade por foto, cron, agrupamentos) |
 
 ### Migrations existentes
 
@@ -337,6 +337,7 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 | `0016_school_task_captures` | school_task_captures; corrige colunas ausentes em activity_submissions (file_type, comment) |
 | `0017_student_grades` | student_grades (notas da escola regular) |
 | `0018_student_grades_unidade` | adiciona coluna `unidade` (bimestre/etapa) em student_grades |
+| `0019_activity_corrections` | activity_corrections (corretor de atividade por foto via IA, com histórico por aluno) |
 
 ## Specs do produto
 
@@ -466,15 +467,18 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 **Importante:** `super_admin` autentica em domínio separado — não passa pelo `TenantGuard`. É uma entidade de usuário completamente independente dos `users` dos tenants.
 
 ### Spec 9 — IA Pedagógica
-**Tabelas:** `ai_student_panoramas`, `ai_activity_suggestions`
+**Tabelas:** `ai_student_panoramas`, `ai_activity_suggestions`, `activity_corrections`
 
 **Funcionalidades:**
 - **Panorama do aluno:** a partir do histórico de `study_logs`, `session_notes` e `student_progress`, gera um resumo automático indicando pontos fortes, assuntos que precisam de reforço e assuntos nunca estudados. Atualizado após cada sessão finalizada
 - **Agrupamento por assunto comum:** identifica alunos (mesmo de turmas diferentes) que têm assuntos em comum para estudo ou atividades compartilhadas. Resultado exibido no dashboard do professor e do admin
 - **Geração de atividades e quizzes:** cria exercícios personalizados baseados no que o aluno está estudando (assunto + nível atual); professor revisa antes de liberar para o aluno
+- **Corretor de atividades por foto:** professor (tablet) fotografa uma atividade de livro didático já respondida à mão, sem gabarito; `POST /ai/activity-corrections` usa visão multimodal para julgar cada questão (certo/parcial/errado) com base no conteúdo esperado para a série informada, avaliando também qualidade da escrita (letra, ortografia, gramática), e gera nota estimada, resumo e uma orientação em texto pensada para leitura em voz alta ao aluno (`expo-speech` no app). Resultado salvo com `studentId` real (não texto livre) para consulta de histórico depois (`GET /ai/activity-corrections/student/:id`)
 
 **Regras:**
 - `OPENAI_API_KEY` vazio → retorna sugestões de fallback predefinidas; panorama ainda é gerado com base em dados do banco (sem análise semântica)
+- **Exceção — corretor de atividades não tem fallback:** sem `OPENAI_API_KEY`, `POST /ai/activity-corrections` retorna 400 em vez de um resultado vazio, porque não existe correção sem IA
+- **Corretor de atividades sempre usa `gpt-4o`** (não `gpt-4o-mini`, usado nas demais features do módulo) — leitura de letra manuscrita exige mais precisão que os prints de tela usados no restante do Spec 9
 - Panorama recalculado via cron `0 20 * * *` para todos os alunos com atividade no dia
 
 ---

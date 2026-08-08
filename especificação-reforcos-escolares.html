@@ -823,13 +823,15 @@
             <div class="table-chips">
               <span class="table-chip">ai_student_panoramas</span>
               <span class="table-chip">ai_activity_suggestions</span>
+              <span class="table-chip">activity_corrections</span>
             </div>
           </div>
           <div class="features-grid">
             <div class="feature-item">Panorama do aluno: pontos fortes, assuntos a reforçar e nunca estudados</div>
             <div class="feature-item">Agrupamento de alunos por assunto em comum (mesmo entre turmas diferentes)</div>
             <div class="feature-item">Geração de atividades/quizzes personalizados; professor revisa antes de liberar</div>
-            <div class="feature-item">Sem OPENAI_API_KEY → fallback heurístico (sem análise semântica)</div>
+            <div class="feature-item">Corretor de atividades por foto: professor fotografa atividade manuscrita sem gabarito; IA julga cada questão, avalia qualidade da escrita e gera orientação em voz, com histórico por aluno</div>
+            <div class="feature-item">Sem OPENAI_API_KEY → fallback heurístico (sem análise semântica); exceção é o corretor de atividades, que exige a chave (gpt-4o) e não tem fallback</div>
             <div class="feature-item">Panorama recalculado via cron diário</div>
           </div>
         </div>

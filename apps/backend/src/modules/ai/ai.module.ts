@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MulterModule } from '@nestjs/platform-express';
 import { AiStudentPanorama } from './ai-student-panorama.entity';
 import { AiActivitySuggestion } from './ai-activity-suggestion.entity';
+import { ActivityCorrection } from './activity-correction.entity';
 import { StudyLog } from '../tasks/study-log.entity';
 import { SessionNote } from '../attendance/session-note.entity';
 import { StudentProgress } from '../progress/student-progress.entity';
@@ -14,11 +16,13 @@ import { AiController } from './ai.controller';
     TypeOrmModule.forFeature([
       AiStudentPanorama,
       AiActivitySuggestion,
+      ActivityCorrection,
       StudyLog,
       SessionNote,
       StudentProgress,
       User,
     ]),
+    MulterModule.register({ dest: './uploads' }),
   ],
   providers: [AiService],
   controllers: [AiController],

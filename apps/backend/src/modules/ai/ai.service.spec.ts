@@ -1,23 +1,30 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { AiStudentPanorama } from './ai-student-panorama.entity';
 import { AiActivitySuggestion } from './ai-activity-suggestion.entity';
+import { ActivityCorrection } from './activity-correction.entity';
 import { StudyLog } from '../tasks/study-log.entity';
 import { SessionNote } from '../attendance/session-note.entity';
 import { StudentProgress } from '../progress/student-progress.entity';
 import { User } from '../auth/user.entity';
 
+const mockOpenAiCreate = jest.fn();
 jest.mock('openai', () => ({
+  __esModule: true,
   default: jest.fn().mockImplementation(() => ({
     chat: {
       completions: {
-        create: jest.fn(),
+        create: mockOpenAiCreate,
       },
     },
   })),
+}));
+
+jest.mock('fs', () => ({
+  readFileSync: jest.fn().mockReturnValue(Buffer.from('fake-image-bytes')),
 }));
 
 const mkRepo = () => ({
@@ -25,6 +32,7 @@ const mkRepo = () => ({
   findOne: jest.fn(),
   create: jest.fn((dto) => dto),
   save: jest.fn((e) => Promise.resolve({ id: 'gen-id', ...e })),
+  remove: jest.fn(),
   createQueryBuilder: jest.fn().mockReturnValue({
     select: jest.fn().mockReturnThis(),
     addSelect: jest.fn().mockReturnThis(),
@@ -43,29 +51,35 @@ describe('AiService', () => {
   let service: AiService;
   let panoramaRepo: ReturnType<typeof mkRepo>;
   let suggestionRepo: ReturnType<typeof mkRepo>;
+  let correctionRepo: ReturnType<typeof mkRepo>;
   let studyLogRepo: ReturnType<typeof mkRepo>;
   let progressRepo: ReturnType<typeof mkRepo>;
 
-  beforeEach(async () => {
-    panoramaRepo = mkRepo();
-    suggestionRepo = mkRepo();
-    studyLogRepo = mkRepo();
-    const sessionNoteRepo = mkRepo();
-    progressRepo = mkRepo();
-    const userRepo = mkRepo();
-
-    const module: TestingModule = await Test.createTestingModule({
+  function buildModule() {
+    return Test.createTestingModule({
       providers: [
         AiService,
         { provide: getRepositoryToken(AiStudentPanorama), useValue: panoramaRepo },
         { provide: getRepositoryToken(AiActivitySuggestion), useValue: suggestionRepo },
+        { provide: getRepositoryToken(ActivityCorrection), useValue: correctionRepo },
         { provide: getRepositoryToken(StudyLog), useValue: studyLogRepo },
-        { provide: getRepositoryToken(SessionNote), useValue: sessionNoteRepo },
+        { provide: getRepositoryToken(SessionNote), useValue: mkRepo() },
         { provide: getRepositoryToken(StudentProgress), useValue: progressRepo },
-        { provide: getRepositoryToken(User), useValue: userRepo },
+        { provide: getRepositoryToken(User), useValue: mkRepo() },
         { provide: ConfigService, useValue: mockConfig },
       ],
     }).compile();
+  }
+
+  beforeEach(async () => {
+    panoramaRepo = mkRepo();
+    suggestionRepo = mkRepo();
+    correctionRepo = mkRepo();
+    studyLogRepo = mkRepo();
+    progressRepo = mkRepo();
+    mockConfig.get.mockReturnValue(null);
+
+    const module: TestingModule = await buildModule();
 
     service = module.get(AiService);
     jest.clearAllMocks();
@@ -216,6 +230,111 @@ describe('AiService', () => {
       const result = await service.listSuggestionsForReview('t1');
 
       expect(result).toEqual(suggestions);
+    });
+  });
+
+  describe('correctActivity', () => {
+    const file = { filename: 'foto.jpg', path: '/tmp/foto.jpg', mimetype: 'image/jpeg' };
+    const dto = { studentId: 's1', subject: 'Matemática', gradeLevel: '5º ano' };
+
+    it('lança BadRequestException quando não há OPENAI_API_KEY', async () => {
+      await expect(service.correctActivity('t1', 'teacher-1', file, dto)).rejects.toThrow(BadRequestException);
+      expect(mockOpenAiCreate).not.toHaveBeenCalled();
+    });
+
+    it('lança BadRequestException quando não há arquivo, mesmo com IA configurada', async () => {
+      mockConfig.get.mockReturnValue('fake-key');
+      const module: TestingModule = await buildModule();
+      const serviceWithAi = module.get(AiService);
+
+      await expect(serviceWithAi.correctActivity('t1', 'teacher-1', null, dto)).rejects.toThrow(BadRequestException);
+      expect(mockOpenAiCreate).not.toHaveBeenCalled();
+    });
+
+    it('corrige a atividade e salva no histórico quando a IA responde', async () => {
+      mockConfig.get.mockReturnValue('fake-key');
+      const module: TestingModule = await buildModule();
+      const serviceWithAi = module.get(AiService);
+
+      mockOpenAiCreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              questions: [{ number: '1', studentAnswer: '42', status: 'correct', feedback: 'Boa letra!' }],
+              score: '9/10',
+              summary: 'Ótimo desempenho geral.',
+              voiceOrientation: 'Parabéns pelo seu esforço!',
+            }),
+          },
+        }],
+      });
+
+      const result = await serviceWithAi.correctActivity('t1', 'teacher-1', file, dto);
+
+      expect(correctionRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+        tenantId: 't1',
+        studentId: 's1',
+        createdBy: 'teacher-1',
+        subject: 'Matemática',
+        gradeLevel: '5º ano',
+        imageUrl: '/uploads/foto.jpg',
+        score: '9/10',
+        summary: 'Ótimo desempenho geral.',
+        voiceOrientation: 'Parabéns pelo seu esforço!',
+      }));
+      expect(result.id).toBe('gen-id');
+    });
+
+    it('lança BadRequestException quando a chamada à IA falha', async () => {
+      mockConfig.get.mockReturnValue('fake-key');
+      const module: TestingModule = await buildModule();
+      const serviceWithAi = module.get(AiService);
+
+      mockOpenAiCreate.mockRejectedValue(new Error('API indisponível'));
+
+      await expect(serviceWithAi.correctActivity('t1', 'teacher-1', file, dto)).rejects.toThrow(BadRequestException);
+      expect(correctionRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findActivityCorrections', () => {
+    it('filtra por tenant e aluno quando studentId é informado', async () => {
+      const corrections = [{ id: 'c1', studentId: 's1' }];
+      correctionRepo.find.mockResolvedValue(corrections);
+
+      const result = await service.findActivityCorrections('t1', 's1');
+
+      expect(correctionRepo.find).toHaveBeenCalledWith(expect.objectContaining({
+        where: { tenantId: 't1', studentId: 's1' },
+      }));
+      expect(result).toEqual(corrections);
+    });
+
+    it('filtra só por tenant quando studentId não é informado', async () => {
+      correctionRepo.find.mockResolvedValue([]);
+
+      await service.findActivityCorrections('t1');
+
+      expect(correctionRepo.find).toHaveBeenCalledWith(expect.objectContaining({
+        where: { tenantId: 't1' },
+      }));
+    });
+  });
+
+  describe('deleteActivityCorrection', () => {
+    it('remove a correção existente', async () => {
+      const correction = { id: 'c1', tenantId: 't1' };
+      correctionRepo.findOne.mockResolvedValue(correction);
+
+      await service.deleteActivityCorrection('t1', 'c1');
+
+      expect(correctionRepo.remove).toHaveBeenCalledWith(correction);
+    });
+
+    it('lança NotFoundException quando a correção não existe', async () => {
+      correctionRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.deleteActivityCorrection('t1', 'bad')).rejects.toThrow(NotFoundException);
     });
   });
 });

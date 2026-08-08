@@ -179,7 +179,7 @@ export class AuthController {
   }
 
   @ApiBearerAuth()
-  @Roles('tenant_admin')
+  @Roles('tenant_admin', 'teacher')
   @Get('users')
   @ApiOperation({ summary: 'Listar usuários do tenant por role' })
   @ApiQuery({ name: 'role', required: false, enum: ['teacher', 'student', 'guardian', 'tenant_admin'] })

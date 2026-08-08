@@ -3,6 +3,13 @@ import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Alert,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
 import { Card, Badge, Button, SkeletonCard, EmptyState, SectionHeader, colors } from '../../../components/ui';
+import { ActivityCorrectionPanel } from './ActivityCorrectionPanel';
+
+const SEGMENT_LABELS = {
+  minhas: 'Minhas tarefas',
+  capturas: 'Capturas dos alunos',
+  corretor: 'Corretor de atividades',
+} as const;
 
 interface Student { id: string; name: string; }
 interface Task { id: string; title: string; description: string | null; type: string; dueDate: string | null; status: string; student?: { name: string }; }
@@ -73,7 +80,7 @@ function DatePickerInput({ value, onChange }: { value: string; onChange: (v: str
 }
 
 export function TasksScreen() {
-  const [section, setSection] = useState<'minhas' | 'capturas'>('minhas');
+  const [section, setSection] = useState<'minhas' | 'capturas' | 'corretor'>('minhas');
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -215,43 +222,47 @@ export function TasksScreen() {
       </View>
 
       <View style={s.segmentRow}>
-        {(['minhas', 'capturas'] as const).map((sec) => (
+        {(['minhas', 'capturas', 'corretor'] as const).map((sec) => (
           <TouchableOpacity key={sec} onPress={() => setSection(sec)} style={[s.segment, section === sec && s.segmentActive]}>
             <Text style={[s.segmentText, section === sec && s.segmentTextActive]}>
-              {sec === 'minhas' ? 'Minhas tarefas' : 'Capturas dos alunos'}
+              {SEGMENT_LABELS[sec]}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <ScrollView
-        contentContainerStyle={s.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
-        {section === 'minhas' ? (
-          loading
-            ? [1, 2, 3].map((i) => <SkeletonCard key={i} />)
-            : <>
-                <SectionHeader title={`Pendentes (${pending.length})`} />
-                {pending.length === 0
-                  ? <EmptyState icon="✅" message="Nenhuma tarefa pendente" />
-                  : pending.map((t) => <TaskItem key={t.id} task={t} onDelete={remove} />)
-                }
-                {done.length > 0 && (
-                  <>
-                    <SectionHeader title={`Concluídas (${done.length})`} />
-                    {done.map((t) => <TaskItem key={t.id} task={t} onDelete={remove} />)}
-                  </>
-                )}
-              </>
-        ) : (
-          loadingCaptures
-            ? [1, 2, 3].map((i) => <SkeletonCard key={i} />)
-            : captures.length === 0
-              ? <EmptyState icon="🏫" message="Nenhuma captura de tarefa da escola ainda" />
-              : captures.map((c) => <CaptureItem key={c.id} capture={c} />)
-        )}
-      </ScrollView>
+      {section === 'corretor' ? (
+        <ActivityCorrectionPanel />
+      ) : (
+        <ScrollView
+          contentContainerStyle={s.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          {section === 'minhas' ? (
+            loading
+              ? [1, 2, 3].map((i) => <SkeletonCard key={i} />)
+              : <>
+                  <SectionHeader title={`Pendentes (${pending.length})`} />
+                  {pending.length === 0
+                    ? <EmptyState icon="✅" message="Nenhuma tarefa pendente" />
+                    : pending.map((t) => <TaskItem key={t.id} task={t} onDelete={remove} />)
+                  }
+                  {done.length > 0 && (
+                    <>
+                      <SectionHeader title={`Concluídas (${done.length})`} />
+                      {done.map((t) => <TaskItem key={t.id} task={t} onDelete={remove} />)}
+                    </>
+                  )}
+                </>
+          ) : (
+            loadingCaptures
+              ? [1, 2, 3].map((i) => <SkeletonCard key={i} />)
+              : captures.length === 0
+                ? <EmptyState icon="🏫" message="Nenhuma captura de tarefa da escola ainda" />
+                : captures.map((c) => <CaptureItem key={c.id} capture={c} />)
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
