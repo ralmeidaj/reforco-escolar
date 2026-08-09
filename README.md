@@ -49,6 +49,7 @@ cd apps/mobile && npx expo start
 | Variável | Descrição |
 |---|---|
 | `JWT_SECRET` | Secret JWT — mesmo valor no backend e `apps/frontend/.env.local` |
+| `TENANT_SECRETS_KEY` | Hex de 32 bytes (64 caracteres) — cifra segredos por tenant (ex.: chave OpenAI própria da escola) |
 | `DATABASE_URL` | URL do PostgreSQL |
 | `REDIS_URL` | URL do Redis (Upstash ou local) |
 | `RESEND_API_KEY` | Chave Resend para e-mails transacionais |
@@ -142,6 +143,7 @@ Row-level tenancy com `tenant_id` em todas as tabelas. O tenant é identificado 
 0017_student_grades
 0018_student_grades_unidade
 0019_activity_corrections
+0020_tenant_openai_key
 ```
 
 ## Hospedagem recomendada
