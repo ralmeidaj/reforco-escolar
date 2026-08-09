@@ -28,6 +28,9 @@ export class Tenant {
   @Column({ name: 'saas_status', default: 'active' })
   saasStatus: string;
 
+  @Column({ name: 'openai_api_key_encrypted', type: 'text', nullable: true })
+  openaiApiKeyEncrypted: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

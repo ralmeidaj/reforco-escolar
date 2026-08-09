@@ -1,24 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConfigService } from '@nestjs/config';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { TasksService } from './tasks.service';
 import { Task } from './task.entity';
 import { StudyLog } from './study-log.entity';
 import { ActivitySubmission } from './activity-submission.entity';
 import { SchoolTaskCapture } from './school-task-capture.entity';
+import { OpenAiClientResolver } from '../../common/openai/openai-client-resolver.service';
 
 const mockOpenAiCreate = jest.fn();
-jest.mock('openai', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    chat: {
-      completions: {
-        create: mockOpenAiCreate,
-      },
-    },
-  })),
-}));
 
 jest.mock('fs', () => ({
   readFileSync: jest.fn().mockReturnValue(Buffer.from('fake-image-bytes')),
@@ -32,7 +22,7 @@ const makeRepo = () => ({
   remove: jest.fn(),
 });
 
-const mockConfig = { get: jest.fn().mockReturnValue(null) }; // sem OPENAI_API_KEY por padrão
+const mockOpenAiClientResolver = { getClient: jest.fn().mockResolvedValue(null) }; // sem client por padrão
 
 describe('TasksService', () => {
   let service: TasksService;
@@ -51,7 +41,7 @@ describe('TasksService', () => {
     studyLogRepo = makeRepo();
     submissionRepo = makeRepo();
     captureRepo = makeRepo();
-    mockConfig.get.mockReturnValue(null);
+    mockOpenAiClientResolver.getClient.mockResolvedValue(null);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -60,7 +50,7 @@ describe('TasksService', () => {
         { provide: getRepositoryToken(StudyLog), useValue: studyLogRepo },
         { provide: getRepositoryToken(ActivitySubmission), useValue: submissionRepo },
         { provide: getRepositoryToken(SchoolTaskCapture), useValue: captureRepo },
-        { provide: ConfigService, useValue: mockConfig },
+        { provide: OpenAiClientResolver, useValue: mockOpenAiClientResolver },
       ],
     }).compile();
 
@@ -185,7 +175,7 @@ describe('TasksService', () => {
   describe('extractSchoolTaskCapture', () => {
     const file = { filename: 'foto.jpg', path: '/tmp/foto.jpg', mimetype: 'image/jpeg' };
 
-    it('retorna extracted null quando não há OPENAI_API_KEY', async () => {
+    it('retorna extracted null quando não há client OpenAI (sem chave própria nem global)', async () => {
       const result = await service.extractSchoolTaskCapture(tenantId, file);
 
       expect(result).toEqual({ imageUrl: '/uploads/foto.jpg', extracted: null });
@@ -197,47 +187,24 @@ describe('TasksService', () => {
       expect(result).toEqual({ imageUrl: 'stub://no-file', extracted: null });
     });
 
-    it('retorna dados extraídos quando há OPENAI_API_KEY e a IA responde', async () => {
-      mockConfig.get.mockReturnValue('fake-key');
-      const module: TestingModule = await Test.createTestingModule({
-        providers: [
-          TasksService,
-          { provide: getRepositoryToken(Task), useValue: taskRepo },
-          { provide: getRepositoryToken(StudyLog), useValue: studyLogRepo },
-          { provide: getRepositoryToken(ActivitySubmission), useValue: submissionRepo },
-          { provide: getRepositoryToken(SchoolTaskCapture), useValue: captureRepo },
-          { provide: ConfigService, useValue: mockConfig },
-        ],
-      }).compile();
-      const serviceWithAi = module.get<TasksService>(TasksService);
-
+    it('retorna dados extraídos quando há client OpenAI e a IA responde', async () => {
+      mockOpenAiClientResolver.getClient.mockResolvedValue({ chat: { completions: { create: mockOpenAiCreate } } });
       mockOpenAiCreate.mockResolvedValue({
         choices: [{ message: { content: JSON.stringify({ subject: 'Matemática', title: 'Página 45', description: 'Exercícios 1-10', dueDate: '2025-02-10' }) } }],
       });
 
-      const result = await serviceWithAi.extractSchoolTaskCapture(tenantId, file);
+      const result = await service.extractSchoolTaskCapture(tenantId, file);
 
       expect(result.imageUrl).toBe('/uploads/foto.jpg');
       expect(result.extracted).toEqual({ subject: 'Matemática', title: 'Página 45', description: 'Exercícios 1-10', dueDate: '2025-02-10' });
+      expect(mockOpenAiClientResolver.getClient).toHaveBeenCalledWith(tenantId);
     });
 
     it('cai no fallback quando a chamada à IA falha', async () => {
-      mockConfig.get.mockReturnValue('fake-key');
-      const module: TestingModule = await Test.createTestingModule({
-        providers: [
-          TasksService,
-          { provide: getRepositoryToken(Task), useValue: taskRepo },
-          { provide: getRepositoryToken(StudyLog), useValue: studyLogRepo },
-          { provide: getRepositoryToken(ActivitySubmission), useValue: submissionRepo },
-          { provide: getRepositoryToken(SchoolTaskCapture), useValue: captureRepo },
-          { provide: ConfigService, useValue: mockConfig },
-        ],
-      }).compile();
-      const serviceWithAi = module.get<TasksService>(TasksService);
-
+      mockOpenAiClientResolver.getClient.mockResolvedValue({ chat: { completions: { create: mockOpenAiCreate } } });
       mockOpenAiCreate.mockRejectedValue(new Error('API indisponível'));
 
-      const result = await serviceWithAi.extractSchoolTaskCapture(tenantId, file);
+      const result = await service.extractSchoolTaskCapture(tenantId, file);
 
       expect(result).toEqual({ imageUrl: '/uploads/foto.jpg', extracted: null });
     });

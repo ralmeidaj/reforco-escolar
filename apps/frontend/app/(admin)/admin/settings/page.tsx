@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/app/lib/api';
 import { LoadingOverlay } from '@/app/components/LoadingOverlay';
+import type { OpenAiKeyStatus } from '@/app/lib/types';
 
 interface Me { name: string; email: string; role: string }
 
@@ -14,6 +15,14 @@ export default function AdminSettingsPage() {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
+  const [aiStatus, setAiStatus] = useState<OpenAiKeyStatus | null>(null);
+  const [loadingAi, setLoadingAi] = useState(true);
+  const [newApiKey, setNewApiKey] = useState('');
+  const [savingAi, setSavingAi] = useState(false);
+  const [removingAi, setRemovingAi] = useState(false);
+  const [aiSuccess, setAiSuccess] = useState('');
+  const [aiError, setAiError] = useState('');
+
   useEffect(() => {
     api.get<Me>('/auth/me')
       .then(({ data }) => {
@@ -22,6 +31,49 @@ export default function AdminSettingsPage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    api.get<OpenAiKeyStatus>('/tenants/me/openai-key')
+      .then(({ data }) => setAiStatus(data))
+      .finally(() => setLoadingAi(false));
+  }, []);
+
+  async function handleSaveAiKey(e: React.FormEvent) {
+    e.preventDefault();
+    setAiError('');
+    setAiSuccess('');
+    if (!newApiKey.trim()) return;
+
+    setSavingAi(true);
+    try {
+      const { data } = await api.put<OpenAiKeyStatus>('/tenants/me/openai-key', { apiKey: newApiKey.trim() });
+      setAiStatus(data);
+      setNewApiKey('');
+      setAiSuccess('Chave salva com sucesso!');
+    } catch (err: any) {
+      const msg = Array.isArray(err.response?.data?.message)
+        ? err.response.data.message.join(', ')
+        : (err.response?.data?.message ?? 'Erro ao salvar a chave');
+      setAiError(msg);
+    } finally {
+      setSavingAi(false);
+    }
+  }
+
+  async function handleRemoveAiKey() {
+    setAiError('');
+    setAiSuccess('');
+    setRemovingAi(true);
+    try {
+      await api.delete('/tenants/me/openai-key');
+      setAiStatus({ hasKey: false, keyPreview: null });
+      setAiSuccess('Chave removida — usando a chave da plataforma agora.');
+    } catch {
+      setAiError('Erro ao remover a chave');
+    } finally {
+      setRemovingAi(false);
+    }
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -55,7 +107,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <LoadingOverlay visible={saving} message="Salvando..." />
+      <LoadingOverlay visible={saving || savingAi || removingAi} message="Salvando..." />
 
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
@@ -151,6 +203,66 @@ export default function AdminSettingsPage() {
           </div>
         </form>
       )}
+
+      <form onSubmit={handleSaveAiKey} className="space-y-3">
+        <div className="rounded-2xl bg-white p-6 shadow-sm space-y-4">
+          <h2 className="text-sm font-semibold text-gray-700">Integração de IA</h2>
+
+          {aiError && (
+            <div className="rounded-xl bg-red-50 p-3 text-sm text-red-600">{aiError}</div>
+          )}
+          {aiSuccess && (
+            <div className="rounded-xl bg-green-50 p-3 text-sm text-green-700">{aiSuccess}</div>
+          )}
+
+          {loadingAi ? (
+            <div className="h-14 animate-pulse rounded-xl bg-gray-200" />
+          ) : (
+            <>
+              <p className="text-sm text-gray-500">
+                {aiStatus?.hasKey
+                  ? `Chave própria configurada (•••• ${aiStatus.keyPreview ?? '----'})`
+                  : 'Usando a chave da OpenAI da plataforma (padrão).'}
+              </p>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  {aiStatus?.hasKey ? 'Substituir chave' : 'Chave da OpenAI'}
+                </label>
+                <input
+                  type="password"
+                  autoComplete="off"
+                  value={newApiKey}
+                  onChange={(e) => setNewApiKey(e.target.value)}
+                  placeholder="sk-..."
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                {aiStatus?.hasKey ? (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAiKey}
+                    disabled={removingAi}
+                    className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-60"
+                  >
+                    {removingAi ? 'Removendo...' : 'Remover chave'}
+                  </button>
+                ) : <span />}
+
+                <button
+                  type="submit"
+                  disabled={savingAi || !newApiKey.trim()}
+                  className="rounded-lg bg-brand-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+                >
+                  {savingAi ? 'Salvando...' : 'Salvar chave'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </form>
     </div>
   );
 }

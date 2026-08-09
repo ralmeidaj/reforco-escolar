@@ -6,6 +6,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
 import { RedisModule } from './common/redis/redis.module';
+import { TenantSecretsCipherModule } from './common/crypto/tenant-secrets-cipher.module';
+import { OpenAiModule } from './common/openai/openai.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -54,6 +56,8 @@ import { AiModule } from './modules/ai/ai.module';
     ScheduleModule.forRoot(),
 
     RedisModule,
+    TenantSecretsCipherModule,
+    OpenAiModule,
     TenantsModule,
     AuthModule,
     SubjectsModule,

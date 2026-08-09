@@ -231,6 +231,7 @@ O `.env` fica na **raiz do monorepo**. O frontend usa `apps/frontend/.env.local`
 | Variável | Onde | Obrigatória em prod |
 |---|---|---|
 | `JWT_SECRET` | `.env` | Sim — throw se ausente no backend |
+| `TENANT_SECRETS_KEY` | `.env` | Sim — throw se ausente no backend (hex de 32 bytes/64 caracteres; cifra a chave OpenAI própria de cada tenant) |
 | `DATABASE_URL` | `.env` | Sim |
 | `REDIS_URL` | `.env` | Sim (Upstash URL) |
 | `RESEND_API_KEY` | `.env` | Sim (e-mail transacional) |
@@ -277,6 +278,8 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 - Usar **AES-256-GCM** para todos os dados sensíveis novos — nunca CBC.
   - GCM inclui auth tag (16 B) que detecta adulteração do ciphertext.
   - Layout padrão GCM: `[IV 12B][authTag 16B][ciphertext]`
+  - Helper reutilizável em `src/common/crypto/aes-gcm.util.ts` (`encryptAesGcm`/`decryptAesGcm`) — usar esse em vez de reimplementar
+- `TENANT_SECRETS_KEY` é a master key que cifra segredos por tenant (hoje: chave OpenAI própria, coluna `tenants.openai_api_key_encrypted`) — lida uma vez por `TenantSecretsCipherService` (`src/common/crypto/`), `@Global()`. Se essa var mudar/for perdida, segredos já cifrados ficam permanentemente indecifráveis (sem script de rotação hoje)
 
 ### Cookies de autenticação
 - Sempre `httpOnly: true` — nunca expor tokens via JavaScript.
@@ -338,6 +341,7 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 | `0017_student_grades` | student_grades (notas da escola regular) |
 | `0018_student_grades_unidade` | adiciona coluna `unidade` (bimestre/etapa) em student_grades |
 | `0019_activity_corrections` | activity_corrections (corretor de atividade por foto via IA, com histórico por aluno) |
+| `0020_tenant_openai_key` | adiciona `openai_api_key_encrypted` (nullable) em `tenants` |
 
 ## Specs do produto
 
@@ -354,6 +358,7 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 - `TenantGuard` + `TenantInterceptor` globais
 - Perfil básico por role (foto, dados pessoais)
 - Rate limiting em todos os endpoints de auth
+- **Chave OpenAI própria por tenant:** `tenant_admin` configura a própria chave da OpenAI em `/admin/settings` (`GET/PUT/DELETE /tenants/me/openai-key`), armazenada criptografada (AES-256-GCM) em `tenants.openai_api_key_encrypted`. A chave nunca é retornada em texto claro — só `{hasKey, keyPreview}` (últimos 4 caracteres). **Se o tenant não configurar a própria chave, todas as features de IA (Spec 9) caem de volta pra `OPENAI_API_KEY` global do `.env`** — retrocompatível. Resolução centralizada em `OpenAiClientResolver` (`src/common/openai/`, `@Global()`), injetado por `AiService`/`TasksService` em vez de cada um instanciar o client OpenAI no próprio construtor
 
 ---
 
@@ -476,8 +481,8 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 - **Corretor de atividades por foto:** professor (tablet) fotografa uma atividade de livro didático já respondida à mão, sem gabarito; `POST /ai/activity-corrections` usa visão multimodal para julgar cada questão (certo/parcial/errado) com base no conteúdo esperado para a série informada, avaliando também qualidade da escrita (letra, ortografia, gramática), e gera nota estimada, resumo e uma orientação em texto pensada para leitura em voz alta ao aluno (`expo-speech` no app). Resultado salvo com `studentId` real (não texto livre) para consulta de histórico depois (`GET /ai/activity-corrections/student/:id`)
 
 **Regras:**
-- `OPENAI_API_KEY` vazio → retorna sugestões de fallback predefinidas; panorama ainda é gerado com base em dados do banco (sem análise semântica)
-- **Exceção — corretor de atividades não tem fallback:** sem `OPENAI_API_KEY`, `POST /ai/activity-corrections` retorna 400 em vez de um resultado vazio, porque não existe correção sem IA
+- Resolução da chave OpenAI: chave própria do tenant (Spec 1) → senão `OPENAI_API_KEY` global do `.env` → senão nenhum client. Sem client → retorna sugestões de fallback predefinidas; panorama ainda é gerado com base em dados do banco (sem análise semântica)
+- **Exceção — corretor de atividades não tem fallback:** sem chave (própria ou global), `POST /ai/activity-corrections` retorna 400 em vez de um resultado vazio, porque não existe correção sem IA
 - **Corretor de atividades sempre usa `gpt-4o`** (não `gpt-4o-mini`, usado nas demais features do módulo) — leitura de letra manuscrita exige mais precisão que os prints de tela usados no restante do Spec 9
 - Panorama recalculado via cron `0 20 * * *` para todos os alunos com atividade no dia
 

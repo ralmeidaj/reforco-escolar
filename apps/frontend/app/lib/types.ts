@@ -12,3 +12,8 @@ export interface AuthResponse {
   refreshToken: string;
   user: AuthUser;
 }
+
+export interface OpenAiKeyStatus {
+  hasKey: boolean;
+  keyPreview: string | null;
+}

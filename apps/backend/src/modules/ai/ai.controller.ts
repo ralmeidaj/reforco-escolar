@@ -118,7 +118,7 @@ export class AiController {
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Corrigir foto de atividade via IA (sem gabarito) e salvar no histórico' })
   @ApiResponse({ status: 201, description: 'Correção gerada e salva' })
-  @ApiResponse({ status: 400, description: 'Sem OPENAI_API_KEY configurada ou falha ao corrigir' })
+  @ApiResponse({ status: 400, description: 'Nenhuma chave OpenAI configurada (própria ou da plataforma) ou falha ao corrigir' })
   correctActivity(
     @Req() req: Request,
     @UploadedFile() file: any,

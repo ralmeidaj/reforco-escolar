@@ -1,10 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan, IsNull } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import * as fs from 'fs';
-import OpenAI from 'openai';
 import { AiStudentPanorama } from './ai-student-panorama.entity';
 import { AiActivitySuggestion, AiSuggestionType } from './ai-activity-suggestion.entity';
 import { ActivityCorrection, ActivityCorrectionQuestion } from './activity-correction.entity';
@@ -13,11 +11,10 @@ import { SessionNote } from '../attendance/session-note.entity';
 import { StudentProgress } from '../progress/student-progress.entity';
 import { User } from '../auth/user.entity';
 import { CreateActivityCorrectionDto } from './dto/create-activity-correction.dto';
+import { OpenAiClientResolver } from '../../common/openai/openai-client-resolver.service';
 
 @Injectable()
 export class AiService {
-  private openai: OpenAI | null;
-
   constructor(
     @InjectRepository(AiStudentPanorama) private panoramaRepo: Repository<AiStudentPanorama>,
     @InjectRepository(AiActivitySuggestion) private suggestionRepo: Repository<AiActivitySuggestion>,
@@ -26,16 +23,14 @@ export class AiService {
     @InjectRepository(SessionNote) private sessionNoteRepo: Repository<SessionNote>,
     @InjectRepository(StudentProgress) private progressRepo: Repository<StudentProgress>,
     @InjectRepository(User) private userRepo: Repository<User>,
-    private config: ConfigService,
-  ) {
-    const key = config.get<string>('OPENAI_API_KEY');
-    this.openai = key ? new OpenAI({ apiKey: key }) : null;
-  }
+    private readonly openaiClientResolver: OpenAiClientResolver,
+  ) {}
 
   // ── Panorama do aluno ───────────────────────────────────────────────────────
 
   async generatePanorama(tenantId: string, studentId: string): Promise<AiStudentPanorama[]> {
     const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000); // 60 dias
+    const openai = await this.openaiClientResolver.getClient(tenantId);
 
     const logs = await this.studyLogRepo.find({ where: { tenantId, studentId } });
     const notes = await this.sessionNoteRepo.find({ where: { tenantId } });
@@ -58,7 +53,7 @@ export class AiService {
       let needsReview: string[] = [];
       let summary: string | null = null;
 
-      if (this.openai) {
+      if (openai) {
         const context = [
           `Disciplina: ${prog.subjectId}`,
           `Nível atual: ${prog.level}`,
@@ -68,7 +63,7 @@ export class AiService {
         ].join('\n');
 
         try {
-          const resp = await this.openai.chat.completions.create({
+          const resp = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
               { role: 'system', content: 'Você é um assistente pedagógico. Analise o desempenho do aluno e responda em JSON com: strengths (array de strings), needsReview (array de strings), summary (string em pt-BR de 2-3 frases).' },
@@ -141,6 +136,7 @@ export class AiService {
     subjectId: string,
     type: AiSuggestionType = 'exercicio',
   ): Promise<AiActivitySuggestion> {
+    const openai = await this.openaiClientResolver.getClient(tenantId);
     const progress = await this.progressRepo.findOne({ where: { tenantId, studentId, subjectId } });
     const level = progress?.level ?? 'iniciante';
 
@@ -154,9 +150,9 @@ export class AiService {
     let title: string;
     let content: string;
 
-    if (this.openai && recentTopics.length > 0) {
+    if (openai && recentTopics.length > 0) {
       try {
-        const resp = await this.openai.chat.completions.create({
+        const resp = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
           messages: [
             { role: 'system', content: `Crie uma atividade do tipo "${type}" para um aluno de nível "${level}". Responda em JSON com: title (string), content (string com o enunciado completo em pt-BR, com 3-5 questões se for quiz).` },
@@ -222,8 +218,9 @@ export class AiService {
     file: any,
     dto: CreateActivityCorrectionDto,
   ): Promise<ActivityCorrection> {
-    if (!this.openai) {
-      throw new BadRequestException('Correção por IA não está disponível — configure OPENAI_API_KEY.');
+    const openai = await this.openaiClientResolver.getClient(tenantId);
+    if (!openai) {
+      throw new BadRequestException('Correção por IA não está disponível — nenhuma chave da OpenAI configurada (própria ou da plataforma).');
     }
     if (!file) {
       throw new BadRequestException('Envie a foto da atividade.');
@@ -264,7 +261,7 @@ Responda APENAS com um JSON válido, sem markdown, sem texto antes ou depois, no
 
     let parsed: any;
     try {
-      const resp = await this.openai.chat.completions.create({
+      const resp = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },

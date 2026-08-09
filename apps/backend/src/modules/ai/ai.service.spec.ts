@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConfigService } from '@nestjs/config';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { AiService } from './ai.service';
 import { AiStudentPanorama } from './ai-student-panorama.entity';
@@ -10,18 +9,9 @@ import { StudyLog } from '../tasks/study-log.entity';
 import { SessionNote } from '../attendance/session-note.entity';
 import { StudentProgress } from '../progress/student-progress.entity';
 import { User } from '../auth/user.entity';
+import { OpenAiClientResolver } from '../../common/openai/openai-client-resolver.service';
 
 const mockOpenAiCreate = jest.fn();
-jest.mock('openai', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    chat: {
-      completions: {
-        create: mockOpenAiCreate,
-      },
-    },
-  })),
-}));
 
 jest.mock('fs', () => ({
   readFileSync: jest.fn().mockReturnValue(Buffer.from('fake-image-bytes')),
@@ -45,7 +35,7 @@ const mkRepo = () => ({
   }),
 });
 
-const mockConfig = { get: jest.fn().mockReturnValue(null) }; // sem OPENAI_API_KEY
+const mockOpenAiClientResolver = { getClient: jest.fn().mockResolvedValue(null) }; // sem client por padrão
 
 describe('AiService', () => {
   let service: AiService;
@@ -66,7 +56,7 @@ describe('AiService', () => {
         { provide: getRepositoryToken(SessionNote), useValue: mkRepo() },
         { provide: getRepositoryToken(StudentProgress), useValue: progressRepo },
         { provide: getRepositoryToken(User), useValue: mkRepo() },
-        { provide: ConfigService, useValue: mockConfig },
+        { provide: OpenAiClientResolver, useValue: mockOpenAiClientResolver },
       ],
     }).compile();
   }
@@ -77,13 +67,13 @@ describe('AiService', () => {
     correctionRepo = mkRepo();
     studyLogRepo = mkRepo();
     progressRepo = mkRepo();
-    mockConfig.get.mockReturnValue(null);
+    mockOpenAiClientResolver.getClient.mockResolvedValue(null);
 
     const module: TestingModule = await buildModule();
 
     service = module.get(AiService);
     jest.clearAllMocks();
-    mockConfig.get.mockReturnValue(null);
+    mockOpenAiClientResolver.getClient.mockResolvedValue(null);
   });
 
   describe('generatePanorama', () => {
@@ -237,25 +227,20 @@ describe('AiService', () => {
     const file = { filename: 'foto.jpg', path: '/tmp/foto.jpg', mimetype: 'image/jpeg' };
     const dto = { studentId: 's1', subject: 'Matemática', gradeLevel: '5º ano' };
 
-    it('lança BadRequestException quando não há OPENAI_API_KEY', async () => {
+    it('lança BadRequestException quando não há client OpenAI (sem chave própria nem global)', async () => {
       await expect(service.correctActivity('t1', 'teacher-1', file, dto)).rejects.toThrow(BadRequestException);
       expect(mockOpenAiCreate).not.toHaveBeenCalled();
     });
 
     it('lança BadRequestException quando não há arquivo, mesmo com IA configurada', async () => {
-      mockConfig.get.mockReturnValue('fake-key');
-      const module: TestingModule = await buildModule();
-      const serviceWithAi = module.get(AiService);
+      mockOpenAiClientResolver.getClient.mockResolvedValue({ chat: { completions: { create: mockOpenAiCreate } } });
 
-      await expect(serviceWithAi.correctActivity('t1', 'teacher-1', null, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.correctActivity('t1', 'teacher-1', null, dto)).rejects.toThrow(BadRequestException);
       expect(mockOpenAiCreate).not.toHaveBeenCalled();
     });
 
     it('corrige a atividade e salva no histórico quando a IA responde', async () => {
-      mockConfig.get.mockReturnValue('fake-key');
-      const module: TestingModule = await buildModule();
-      const serviceWithAi = module.get(AiService);
-
+      mockOpenAiClientResolver.getClient.mockResolvedValue({ chat: { completions: { create: mockOpenAiCreate } } });
       mockOpenAiCreate.mockResolvedValue({
         choices: [{
           message: {
@@ -269,8 +254,9 @@ describe('AiService', () => {
         }],
       });
 
-      const result = await serviceWithAi.correctActivity('t1', 'teacher-1', file, dto);
+      const result = await service.correctActivity('t1', 'teacher-1', file, dto);
 
+      expect(mockOpenAiClientResolver.getClient).toHaveBeenCalledWith('t1');
       expect(correctionRepo.create).toHaveBeenCalledWith(expect.objectContaining({
         tenantId: 't1',
         studentId: 's1',
@@ -286,13 +272,10 @@ describe('AiService', () => {
     });
 
     it('lança BadRequestException quando a chamada à IA falha', async () => {
-      mockConfig.get.mockReturnValue('fake-key');
-      const module: TestingModule = await buildModule();
-      const serviceWithAi = module.get(AiService);
-
+      mockOpenAiClientResolver.getClient.mockResolvedValue({ chat: { completions: { create: mockOpenAiCreate } } });
       mockOpenAiCreate.mockRejectedValue(new Error('API indisponível'));
 
-      await expect(serviceWithAi.correctActivity('t1', 'teacher-1', file, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.correctActivity('t1', 'teacher-1', file, dto)).rejects.toThrow(BadRequestException);
       expect(correctionRepo.save).not.toHaveBeenCalled();
     });
   });

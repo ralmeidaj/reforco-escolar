@@ -1,9 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
-import OpenAI from 'openai';
 import { Task } from './task.entity';
 import { StudyLog } from './study-log.entity';
 import { ActivitySubmission } from './activity-submission.entity';
@@ -13,21 +11,17 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { CreateStudyLogDto } from './dto/create-study-log.dto';
 import { CreateActivitySubmissionDto } from './dto/create-activity-submission.dto';
 import { ConfirmSchoolTaskCaptureDto } from './dto/confirm-school-task-capture.dto';
+import { OpenAiClientResolver } from '../../common/openai/openai-client-resolver.service';
 
 @Injectable()
 export class TasksService {
-  private openai: OpenAI | null;
-
   constructor(
     @InjectRepository(Task) private readonly taskRepo: Repository<Task>,
     @InjectRepository(StudyLog) private readonly studyLogRepo: Repository<StudyLog>,
     @InjectRepository(ActivitySubmission) private readonly submissionRepo: Repository<ActivitySubmission>,
     @InjectRepository(SchoolTaskCapture) private readonly captureRepo: Repository<SchoolTaskCapture>,
-    private readonly config: ConfigService,
-  ) {
-    const key = config.get<string>('OPENAI_API_KEY');
-    this.openai = key ? new OpenAI({ apiKey: key }) : null;
-  }
+    private readonly openaiClientResolver: OpenAiClientResolver,
+  ) {}
 
   async createTask(tenantId: string, teacherId: string, dto: CreateTaskDto): Promise<Task> {
     const task = this.taskRepo.create({
@@ -136,11 +130,12 @@ export class TasksService {
     file: any,
   ): Promise<{ imageUrl: string; extracted: Record<string, any> | null }> {
     const imageUrl = file ? `/uploads/${file.filename}` : 'stub://no-file';
-    if (!this.openai || !file) return { imageUrl, extracted: null };
+    const openai = await this.openaiClientResolver.getClient(tenantId);
+    if (!openai || !file) return { imageUrl, extracted: null };
 
     try {
       const base64 = fs.readFileSync(file.path).toString('base64');
-      const resp = await this.openai.chat.completions.create({
+      const resp = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           {
