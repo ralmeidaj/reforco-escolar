@@ -87,7 +87,7 @@ export function ActivityCorrectionPanel() {
       Alert.alert('Permissão necessária', 'Permita o acesso à câmera nas configurações');
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: true });
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       setPhoto({ uri: asset.uri, type: asset.mimeType ?? 'image/jpeg', name: asset.fileName ?? 'foto.jpg' });
@@ -95,7 +95,7 @@ export function ActivityCorrectionPanel() {
   }
 
   async function pickPhoto() {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.8, allowsEditing: true });
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.8 });
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       setPhoto({ uri: asset.uri, type: asset.mimeType ?? 'image/jpeg', name: asset.fileName ?? 'foto.jpg' });
