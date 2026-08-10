@@ -1,4 +1,4 @@
-import { File, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { ImagePickerAsset } from 'expo-image-picker';
 
 export interface LocalPhoto {
@@ -16,12 +16,11 @@ export interface LocalPhoto {
 export async function toLocalPhoto(asset: ImagePickerAsset): Promise<LocalPhoto> {
   const name = asset.fileName ?? `foto-${Date.now()}.jpg`;
   const type = asset.mimeType ?? 'image/jpeg';
+  const dest = `${FileSystem.cacheDirectory}${Date.now()}-${name}`;
 
   try {
-    const source = new File(asset.uri);
-    const dest = new File(Paths.cache, `${Date.now()}-${name}`);
-    await source.copy(dest);
-    return { uri: dest.uri, type, name };
+    await FileSystem.copyAsync({ from: asset.uri, to: dest });
+    return { uri: dest, type, name };
   } catch {
     return { uri: asset.uri, type, name };
   }
