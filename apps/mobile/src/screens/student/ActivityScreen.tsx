@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Alert, Image, ScrollView } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../../../lib/api';
+import { toLocalPhoto } from '../../../lib/photoPicker';
 import { Card, Button, EmptyState, SkeletonCard, colors } from '../../../components/ui';
 
 interface PendingTask { id: string; title: string; dueDate: string | null }
@@ -28,8 +29,7 @@ export function ActivityScreen() {
       quality: 0.8,
     });
     if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      setImage({ uri: asset.uri, type: asset.mimeType ?? 'image/jpeg', name: asset.fileName ?? 'foto.jpg' });
+      setImage(await toLocalPhoto(result.assets[0]));
       setDone(false);
     }
   }
@@ -44,8 +44,7 @@ export function ActivityScreen() {
       quality: 0.8,
     });
     if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      setImage({ uri: asset.uri, type: asset.mimeType ?? 'image/jpeg', name: asset.fileName ?? 'foto.jpg' });
+      setImage(await toLocalPhoto(result.assets[0]));
       setDone(false);
     }
   }

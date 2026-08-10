@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Alert,
 import * as ImagePicker from 'expo-image-picker';
 import * as Speech from 'expo-speech';
 import { api } from '../../../lib/api';
+import { toLocalPhoto } from '../../../lib/photoPicker';
 import { Card, Badge, Button, SkeletonCard, EmptyState, SectionHeader, colors } from '../../../components/ui';
 
 interface StudentLite { id: string; name: string; email: string; }
@@ -89,16 +90,14 @@ export function ActivityCorrectionPanel() {
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
     if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      setPhoto({ uri: asset.uri, type: asset.mimeType ?? 'image/jpeg', name: asset.fileName ?? 'foto.jpg' });
+      setPhoto(await toLocalPhoto(result.assets[0]));
     }
   }
 
   async function pickPhoto() {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.8 });
     if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      setPhoto({ uri: asset.uri, type: asset.mimeType ?? 'image/jpeg', name: asset.fileName ?? 'foto.jpg' });
+      setPhoto(await toLocalPhoto(result.assets[0]));
     }
   }
 
