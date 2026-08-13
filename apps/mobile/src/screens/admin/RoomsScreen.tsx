@@ -19,6 +19,15 @@ interface Room {
 }
 interface Teacher { id: string; name: string }
 interface Subject { id: string; name: string }
+interface ActiveCheckin {
+  checkinId: string;
+  studentId: string;
+  studentName: string;
+  roomId: string;
+  roomName: string;
+  teacherId: string;
+  teacherName: string;
+}
 
 export function RoomsScreen() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -33,22 +42,53 @@ export function RoomsScreen() {
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const [checkins, setCheckins] = useState<ActiveCheckin[]>([]);
+  const [loadingCheckins, setLoadingCheckins] = useState(true);
+  const [reassigningId, setReassigningId] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     try {
-      const [occRes, teachersRes, subjectsRes] = await Promise.all([
+      const [occRes, teachersRes, subjectsRes, checkinsRes] = await Promise.all([
         api.get('/rooms/occupancy').catch(() => ({ data: [] })),
         api.get('/auth/users?role=teacher'),
         api.get('/subjects'),
+        api.get('/rooms/checkins/active').catch(() => ({ data: [] })),
       ]);
       setRooms(occRes.data.map((r: Room) => ({ ...r, currentCount: r.currentCount ?? 0 })));
       setTeachers(teachersRes.data);
       setSubjects(subjectsRes.data);
+      setCheckins(checkinsRes.data);
     } catch {}
   }, []);
 
-  useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
+  useEffect(() => { load().finally(() => { setLoading(false); setLoadingCheckins(false); }); }, [load]);
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+
+  async function reassign(checkinId: string, assignmentId: string) {
+    try {
+      await api.patch(`/rooms/checkins/${checkinId}/reassign`, { assignmentId });
+      setReassigningId(null);
+      await load();
+    } catch {
+      Alert.alert('Erro', 'Não foi possível trocar o professor');
+    }
+  }
+
+  function endCheckin(checkinId: string) {
+    Alert.alert('Encerrar check-in', 'Deseja encerrar o check-in deste aluno?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Encerrar', style: 'destructive', onPress: async () => {
+          try {
+            await api.delete(`/rooms/checkins/${checkinId}`);
+            setCheckins((prev) => prev.filter((c) => c.checkinId !== checkinId));
+          } catch {
+            Alert.alert('Erro', 'Não foi possível encerrar o check-in');
+          }
+        },
+      },
+    ]);
+  }
 
   async function create() {
     if (!name.trim() || !capacity) { Alert.alert('Preencha nome e capacidade'); return; }
@@ -111,6 +151,49 @@ export function RoomsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        <Text style={s.sectionTitle}>Alunos no reforço agora</Text>
+        {loadingCheckins
+          ? <SkeletonCard height={60} />
+          : checkins.length === 0
+            ? <EmptyState icon="🪑" message="Nenhum aluno em check-in agora" />
+            : checkins.map((c) => {
+                const room = rooms.find((r) => r.id === c.roomId);
+                const otherAssignments = (room?.assignments ?? []).filter((a) => a.teacher.id !== c.teacherId);
+                return (
+                  <Card key={c.checkinId} style={{ marginBottom: 8 }}>
+                    <View style={s.roomRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.roomName}>{c.studentName}</Text>
+                        <Text style={s.roomCap}>{c.roomName} · Prof. {c.teacherName}</Text>
+                      </View>
+                    </View>
+                    <View style={s.checkinActions}>
+                      <TouchableOpacity onPress={() => setReassigningId(reassigningId === c.checkinId ? null : c.checkinId)}>
+                        <Text style={s.checkinActionText}>Trocar professor</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => endCheckin(c.checkinId)}>
+                        <Text style={[s.checkinActionText, s.checkinActionDanger]}>Encerrar</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {reassigningId === c.checkinId && (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 8 }}>
+                        <View style={s.chips}>
+                          {otherAssignments.length === 0
+                            ? <Text style={s.roomMetaEmpty}>Nenhum outro professor nesta sala</Text>
+                            : otherAssignments.map((a) => (
+                                <TouchableOpacity key={a.id} onPress={() => reassign(c.checkinId, a.id)} style={s.chip}>
+                                  <Text style={s.chipText}>{[a.subject?.name, `Prof. ${a.teacher.name}`].filter(Boolean).join(' · ')}</Text>
+                                </TouchableOpacity>
+                              ))
+                          }
+                        </View>
+                      </ScrollView>
+                    )}
+                  </Card>
+                );
+              })
+        }
+
         {creating && (
           <Card style={{ marginBottom: 16 }}>
             <Text style={s.formTitle}>Nova sala</Text>
@@ -122,6 +205,7 @@ export function RoomsScreen() {
           </Card>
         )}
 
+        <Text style={s.sectionTitle}>Salas</Text>
         {loading
           ? [1, 2, 3].map((i) => <SkeletonCard key={i} height={100} />)
           : rooms.length === 0
@@ -231,4 +315,8 @@ const s = StyleSheet.create({
   barBg: { height: 8, backgroundColor: '#E5E7EB', borderRadius: 4, overflow: 'hidden', marginTop: 10 },
   barFill: { height: 8, borderRadius: 4 },
   pct: { fontSize: 11, color: colors.muted, marginTop: 4 },
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
+  checkinActions: { flexDirection: 'row', gap: 16, marginTop: 10 },
+  checkinActionText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+  checkinActionDanger: { color: colors.danger },
 });

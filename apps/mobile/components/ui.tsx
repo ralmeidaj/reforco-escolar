@@ -115,7 +115,7 @@ export function AppLogo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
         <Text style={{ fontSize: emoji }}>📚</Text>
       </View>
       <View style={logo.textWrap}>
-        <Text style={[logo.name, { fontSize: name }]}>Reforços Escolares</Text>
+        <Text style={[logo.name, { fontSize: name }]}>Clube de Estudos</Text>
         {sub > 0 && <Text style={[logo.sub, { fontSize: sub }]}>Plataforma pedagógica</Text>}
       </View>
     </View>
@@ -153,7 +153,7 @@ export function AppSplashScreen({ onDone }: { onDone: () => void }) {
         <View style={sp.iconCircle}>
           <Text style={sp.iconEmoji}>📚</Text>
         </View>
-        <Text style={sp.appName}>Reforços Escolares</Text>
+        <Text style={sp.appName}>Clube de Estudos</Text>
         <Text style={sp.tagline}>Plataforma pedagógica</Text>
       </Animated.View>
     </Animated.View>

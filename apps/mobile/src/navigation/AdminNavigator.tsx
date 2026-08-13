@@ -5,6 +5,8 @@ import { withAlpha } from '../../lib/tabColors';
 import { DashboardScreen } from '../screens/admin/DashboardScreen';
 import { RoomsScreen } from '../screens/admin/RoomsScreen';
 import { RoomSchedulesScreen } from '../screens/admin/RoomSchedulesScreen';
+import { RegistrationsScreen } from '../screens/admin/RegistrationsScreen';
+import { FinanceScreen } from '../screens/admin/FinanceScreen';
 import { NotificationsScreen } from '../screens/admin/NotificationsScreen';
 import { ProfileScreen } from '../screens/shared/ProfileScreen';
 
@@ -13,19 +15,23 @@ const Tab = createBottomTabNavigator();
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const ICONS: Record<string, [IoniconName, IoniconName]> = {
-  Dashboard: ['stats-chart-outline',    'stats-chart'],
-  Salas:     ['business-outline',       'business'],
-  Horários:  ['calendar-outline',       'calendar'],
-  Avisos:    ['notifications-outline',  'notifications'],
-  Perfil:    ['person-circle-outline',  'person-circle'],
+  Dashboard:  ['stats-chart-outline',    'stats-chart'],
+  Salas:      ['business-outline',       'business'],
+  Horários:   ['calendar-outline',       'calendar'],
+  Cadastros:  ['school-outline',         'school'],
+  Financeiro: ['cash-outline',           'cash'],
+  Avisos:     ['notifications-outline',  'notifications'],
+  Perfil:     ['person-circle-outline',  'person-circle'],
 };
 
 const TAB_COLORS: Record<string, string> = {
-  Dashboard: '#6366F1',
-  Salas:     '#D97706',
-  Horários:  '#2563EB',
-  Avisos:    '#DC2626',
-  Perfil:    '#0EA5E9',
+  Dashboard:  '#6366F1',
+  Salas:      '#D97706',
+  Horários:   '#2563EB',
+  Cadastros:  '#7C3AED',
+  Financeiro: '#059669',
+  Avisos:     '#DC2626',
+  Perfil:     '#0EA5E9',
 };
 
 export function AdminNavigator() {
@@ -42,11 +48,13 @@ export function AdminNavigator() {
         },
       };
     }}>
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Salas"     component={RoomsScreen} />
-      <Tab.Screen name="Horários"  component={RoomSchedulesScreen} />
-      <Tab.Screen name="Avisos"    component={NotificationsScreen} />
-      <Tab.Screen name="Perfil"    component={ProfileScreen} />
+      <Tab.Screen name="Dashboard"  component={DashboardScreen} />
+      <Tab.Screen name="Salas"      component={RoomsScreen} />
+      <Tab.Screen name="Horários"   component={RoomSchedulesScreen} />
+      <Tab.Screen name="Cadastros"  component={RegistrationsScreen} />
+      <Tab.Screen name="Financeiro" component={FinanceScreen} />
+      <Tab.Screen name="Avisos"     component={NotificationsScreen} />
+      <Tab.Screen name="Perfil"     component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
