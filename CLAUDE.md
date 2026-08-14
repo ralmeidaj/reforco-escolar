@@ -147,6 +147,14 @@ Usar sempre o cliente centralizado em `src/lib/api.ts` com `api.get/post/patch/d
 
 ## Arquitetura do mobile (Expo)
 
+**Nome do app:** "Clube de Estudos" (`app.json` → `expo.name`, e textos do `AppLogo`/
+`AppSplashScreen` em `components/ui.tsx`) — distinto do nome do projeto/plataforma
+("ReforçosEscolares"). Renomeado nesta sessão; o ícone gráfico e o `AppLogo` (hoje
+emoji 📚 + texto) ainda não foram atualizados — aguardando a logo nova do cliente.
+`slug`, `scheme`, `bundleIdentifier`/`package` e `projectId` do EAS **não** foram
+alterados (são identificadores de infraestrutura, risco de romper o vínculo com o
+projeto EAS/lojas se mudados sem necessidade).
+
 ### Decisão de arquitetura
 Expo com React Native — **um único app** que serve três contextos de uso distintos:
 
@@ -209,14 +217,20 @@ apps/mobile/
     navigation/
       RootNavigator.tsx         ← splash screen → checa sessão salva → switch por role
       AuthNavigator.tsx
-      AdminNavigator.tsx        ← tabs: Dashboard · Salas · Horários · Avisos · Perfil
+      AdminNavigator.tsx        ← tabs: Dashboard · Salas · Horários · Cadastros · Financeiro · Avisos · Perfil
       TeacherNavigator.tsx      ← tabs: Presença · Notas · Tarefas · Salas · Avisos · Perfil
       StudentNavigator.tsx      ← tabs: Início · Salas · Tarefas · Estudo · Atividade · Evolução · Avisos · Perfil
       GuardianNavigator.tsx     ← tabs: Início · Frequência · Tarefas · Evolução · Financeiro · Chat · Avisos · Perfil
     screens/
       auth/LoginScreen.tsx       ← e-mail + senha (sem slug); tela de seleção de escola se necessário
-      shared/ProfileScreen.tsx   ← reaproveitada pelos 4 navigators (dados do usuário + Sair da conta)
-      admin/                     ← DashboardScreen, RoomsScreen, RoomSchedulesScreen, NotificationsScreen
+      shared/ProfileScreen.tsx   ← reaproveitada pelos 4 navigators (dados do usuário + Sair da conta);
+                                   seção extra só pra tenant_admin (editar perfil, senha, chave OpenAI do tenant)
+      admin/                     ← DashboardScreen, RoomsScreen (+ painel "alunos no reforço agora" com
+                                   reassign/encerrar check-in), RoomSchedulesScreen, RegistrationsScreen
+                                   (Disciplinas/Turmas/Matrículas, 3 segmentos), FinanceScreen
+                                   (Pacotes/Pagamentos, 2 segmentos, inclui matrícula em pacote — ação que
+                                   nem a própria web tem UI), NotificationsScreen, shared/StudentPicker.tsx
+                                   (busca+lista de aluno reaproveitada por Registrations/Finance)
       teacher/                   ← AttendanceScreen, NotesScreen, TasksScreen, RoomScreen, NotificationsScreen
       student/                   ← HomeScreen, TasksScreen, StudyLogScreen, ActivityScreen, ProgressScreen, RoomCheckinScreen, NotificationsScreen
       guardian/                  ← HomeScreen, AttendanceScreen, TasksScreen, ProgressScreen, FinanceScreen, ChatScreen, NotificationsScreen
