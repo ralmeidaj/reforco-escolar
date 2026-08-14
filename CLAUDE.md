@@ -217,7 +217,9 @@ apps/mobile/
     navigation/
       RootNavigator.tsx         ← splash screen → checa sessão salva → switch por role
       AuthNavigator.tsx
-      AdminNavigator.tsx        ← tabs: Dashboard · Salas · Horários · Cadastros · Financeiro · Avisos · Perfil
+      AdminNavigator.tsx        ← tabs: Dashboard · Salas · Horários · Avisos · Mais (Cadastros e Perfil
+                                   ficam dentro de "Mais", um hub de cards — 5 abas fixas é o limite; toda
+                                   capacidade nova do admin deve entrar como card em Mais, não como aba)
       TeacherNavigator.tsx      ← tabs: Presença · Notas · Tarefas · Salas · Avisos · Perfil
       StudentNavigator.tsx      ← tabs: Início · Salas · Tarefas · Estudo · Atividade · Evolução · Avisos · Perfil
       GuardianNavigator.tsx     ← tabs: Início · Frequência · Tarefas · Evolução · Financeiro · Chat · Avisos · Perfil
@@ -226,11 +228,13 @@ apps/mobile/
       shared/ProfileScreen.tsx   ← reaproveitada pelos 4 navigators (dados do usuário + Sair da conta);
                                    seção extra só pra tenant_admin (editar perfil, senha, chave OpenAI do tenant)
       admin/                     ← DashboardScreen, RoomsScreen (+ painel "alunos no reforço agora" com
-                                   reassign/encerrar check-in), RoomSchedulesScreen, RegistrationsScreen
-                                   (Disciplinas/Turmas/Matrículas, 3 segmentos), FinanceScreen
-                                   (Pacotes/Pagamentos, 2 segmentos, inclui matrícula em pacote — ação que
-                                   nem a própria web tem UI), NotificationsScreen, shared/StudentPicker.tsx
-                                   (busca+lista de aluno reaproveitada por Registrations/Finance)
+                                   reassign/encerrar check-in), RoomSchedulesScreen, MoreScreen (hub de
+                                   cards → Cadastros e Perfil, renderizados com prop `embedded` pra não
+                                   duplicar o SafeAreaView top), RegistrationsScreen (Disciplinas/Turmas/
+                                   Matrículas/Usuários, 4 segmentos — Usuários replica a web /admin/users:
+                                   cadastro direto, convite por e-mail, vínculo professor×disciplina),
+                                   NotificationsScreen, shared/StudentPicker.tsx (busca+lista de aluno,
+                                   usado pelo segmento Matrículas)
       teacher/                   ← AttendanceScreen, NotesScreen, TasksScreen, RoomScreen, NotificationsScreen
       student/                   ← HomeScreen, TasksScreen, StudyLogScreen, ActivityScreen, ProgressScreen, RoomCheckinScreen, NotificationsScreen
       guardian/                  ← HomeScreen, AttendanceScreen, TasksScreen, ProgressScreen, FinanceScreen, ChatScreen, NotificationsScreen

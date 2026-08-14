@@ -12,7 +12,7 @@ const ROLE_LABEL: Record<string, string> = {
   guardian:     'Responsável',
 };
 
-export function ProfileScreen() {
+export function ProfileScreen({ embedded }: { embedded?: boolean } = {}) {
   const { signOut } = useAuth();
   const [user, setUser]       = useState<{ name: string; email: string; role: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,7 +39,7 @@ export function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={s.safe} edges={embedded ? ['left', 'right', 'bottom'] : undefined}>
       <View style={s.header}>
         <Text style={s.title}>Perfil</Text>
       </View>
