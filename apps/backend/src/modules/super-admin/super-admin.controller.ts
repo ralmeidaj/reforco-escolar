@@ -25,6 +25,7 @@ import { SuperAdminAuthService } from './super-admin-auth.service';
 import { SuperAdminTenantsService } from './super-admin-tenants.service';
 import { SaasPlansService } from './saas-plans.service';
 import { AuditLogsService } from './audit-logs.service';
+import { GoogleCalendarService } from '../../common/google-calendar/google-calendar.service';
 import {
   SuperAdminLoginDto,
   SuperAdminVerifyTotpDto,
@@ -48,6 +49,7 @@ export class SuperAdminController {
     private tenantsService: SuperAdminTenantsService,
     private plansService: SaasPlansService,
     private auditService: AuditLogsService,
+    private googleCalendarService: GoogleCalendarService,
   ) {}
 
   // ── Auth ────────────────────────────────────────────────────────────────────
@@ -321,5 +323,29 @@ export class SuperAdminController {
     @Query('offset') offset?: string,
   ) {
     return this.auditService.findByTenant(tenantId, Number(limit) || 50, Number(offset) || 0);
+  }
+
+  // ── Bootstrap Google Calendar (conta única da plataforma) ────────────────────
+  // Fluxo único, feito manualmente uma vez pelo operador da plataforma:
+  // 1. GET google/auth-url autenticado como super admin → abrir a URL retornada no navegador
+  // 2. Conceder acesso à conta Google que vai hospedar as aulas online
+  // 3. Google redireciona para google/callback, que devolve o refreshToken
+  // 4. Copiar o refreshToken para GOOGLE_REFRESH_TOKEN no .env e reiniciar o backend
+
+  @Get('google/auth-url')
+  @UseGuards(SuperAdminAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Gerar URL de autorização OAuth do Google (bootstrap único da conta da plataforma)' })
+  @ApiResponse({ status: 200, description: '{ url: string }' })
+  getGoogleAuthUrl() {
+    return { url: this.googleCalendarService.getAuthUrl() };
+  }
+
+  @Get('google/callback')
+  @ApiOperation({ summary: 'Callback OAuth do Google — troca o code pelo refresh token (copiar para GOOGLE_REFRESH_TOKEN no .env)' })
+  @ApiQuery({ name: 'code', required: true })
+  @ApiResponse({ status: 200, description: '{ refreshToken, accessToken }' })
+  googleCallback(@Query('code') code: string) {
+    return this.googleCalendarService.exchangeCode(code);
   }
 }

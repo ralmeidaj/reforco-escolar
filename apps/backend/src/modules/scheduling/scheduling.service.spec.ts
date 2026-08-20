@@ -5,6 +5,7 @@ import { SchedulingService } from './scheduling.service';
 import { AvailabilitySlot } from './availability-slot.entity';
 import { Session } from './session.entity';
 import { Room } from '../rooms/room.entity';
+import { GoogleCalendarService } from '../../common/google-calendar/google-calendar.service';
 
 const makeQb = () => ({
   select: jest.fn().mockReturnThis(),
@@ -42,6 +43,7 @@ describe('SchedulingService', () => {
   let slotsRepo: ReturnType<typeof makeSlotsRepo>;
   let sessionsRepo: ReturnType<typeof makeSessionsRepo>;
   let roomsRepo: ReturnType<typeof makeRoomsRepo>;
+  let googleCalendar: { createMeetEvent: jest.Mock };
 
   const TENANT = 'tenant-1';
 
@@ -49,6 +51,7 @@ describe('SchedulingService', () => {
     slotsRepo = makeSlotsRepo();
     sessionsRepo = makeSessionsRepo();
     roomsRepo = makeRoomsRepo();
+    googleCalendar = { createMeetEvent: jest.fn().mockResolvedValue(null) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -56,6 +59,7 @@ describe('SchedulingService', () => {
         { provide: getRepositoryToken(AvailabilitySlot), useValue: slotsRepo },
         { provide: getRepositoryToken(Session), useValue: sessionsRepo },
         { provide: getRepositoryToken(Room), useValue: roomsRepo },
+        { provide: GoogleCalendarService, useValue: googleCalendar },
       ],
     }).compile();
 
@@ -118,6 +122,48 @@ describe('SchedulingService', () => {
           teacherId: 'u1', studentId: 'u2', subjectId: 's1', scheduledAt: 'nao-e-data',
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('gera meetLink via Google Calendar para sessão online sem link informado', async () => {
+      const dto = {
+        teacherId: 'u1', studentId: 'u2', subjectId: 's1',
+        scheduledAt: '2025-05-01T08:00:00.000Z', durationMinutes: 60, channel: 'online',
+      };
+      googleCalendar.createMeetEvent.mockResolvedValue('https://meet.google.com/abc-defg-hij');
+      sessionsRepo.save.mockImplementation((v: any) => Promise.resolve(v));
+
+      const result = await service.createSession(TENANT, dto);
+
+      expect(googleCalendar.createMeetEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ durationMinutes: 60 }),
+      );
+      expect(result.meetLink).toBe('https://meet.google.com/abc-defg-hij');
+    });
+
+    it('não chama o Google Calendar quando um meetLink já foi informado', async () => {
+      const dto = {
+        teacherId: 'u1', studentId: 'u2', subjectId: 's1',
+        scheduledAt: '2025-05-01T08:00:00.000Z', channel: 'online',
+        meetLink: 'https://meet.google.com/manual-link',
+      };
+      sessionsRepo.save.mockImplementation((v: any) => Promise.resolve(v));
+
+      const result = await service.createSession(TENANT, dto);
+
+      expect(googleCalendar.createMeetEvent).not.toHaveBeenCalled();
+      expect(result.meetLink).toBe('https://meet.google.com/manual-link');
+    });
+
+    it('não chama o Google Calendar para sessão presencial', async () => {
+      const dto = {
+        teacherId: 'u1', studentId: 'u2', subjectId: 's1',
+        scheduledAt: '2025-05-01T08:00:00.000Z',
+      };
+      sessionsRepo.save.mockImplementation((v: any) => Promise.resolve(v));
+
+      await service.createSession(TENANT, dto);
+
+      expect(googleCalendar.createMeetEvent).not.toHaveBeenCalled();
     });
   });
 

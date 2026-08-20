@@ -8,6 +8,7 @@ import { TenantInterceptor } from './common/interceptors/tenant.interceptor';
 import { RedisModule } from './common/redis/redis.module';
 import { TenantSecretsCipherModule } from './common/crypto/tenant-secrets-cipher.module';
 import { OpenAiModule } from './common/openai/openai.module';
+import { GoogleCalendarModule } from './common/google-calendar/google-calendar.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -58,6 +59,7 @@ import { AiModule } from './modules/ai/ai.module';
     RedisModule,
     TenantSecretsCipherModule,
     OpenAiModule,
+    GoogleCalendarModule,
     TenantsModule,
     AuthModule,
     SubjectsModule,

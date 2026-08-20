@@ -17,6 +17,7 @@ interface Session {
   student?: { name: string };
   subject?: { name: string };
   channel: string;
+  meetLink?: string | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -90,9 +91,21 @@ export default function TeacherDashboard() {
                     {s.subject?.name ?? '—'} · {new Date(s.scheduledAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · {s.channel}
                   </p>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLORS[s.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                  {STATUS_LABELS[s.status] ?? s.status}
-                </span>
+                <div className="flex items-center gap-2">
+                  {s.channel === 'online' && s.meetLink && (
+                    <a
+                      href={s.meetLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-full bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700"
+                    >
+                      Entrar
+                    </a>
+                  )}
+                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_COLORS[s.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {STATUS_LABELS[s.status] ?? s.status}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

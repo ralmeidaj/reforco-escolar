@@ -301,7 +301,10 @@ export default function SchedulePage() {
                 </select>
               </div>
               {form.channel === 'online' && (
-                <input type="url" value={form.meetLink} onChange={(e) => setForm(p => ({ ...p, meetLink: e.target.value }))} placeholder="Link da reunião" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500" />
+                <div>
+                  <input type="url" value={form.meetLink} onChange={(e) => setForm(p => ({ ...p, meetLink: e.target.value }))} placeholder="Link da reunião (opcional — gerado automaticamente se vazio)" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500" />
+                  <p className="mt-1 text-xs text-gray-400">Deixe em branco para gerar um link do Google Meet automaticamente.</p>
+                </div>
               )}
               {formError && <p className="text-sm text-red-600">{formError}</p>}
               <div className="flex justify-end gap-2 pt-2">
@@ -326,6 +329,17 @@ export default function SchedulePage() {
               {new Date(statusModal.scheduledAt).toLocaleString('pt-BR')} · {statusModal.teacher.name}
               {statusModal.room && ` · ${statusModal.room.name}`}
             </p>
+            {statusModal.channel === 'online' && (
+              <p className="mb-4 text-sm">
+                {statusModal.meetLink ? (
+                  <a href={statusModal.meetLink} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline break-all">
+                    {statusModal.meetLink}
+                  </a>
+                ) : (
+                  <span className="text-gray-400">Link da reunião ainda não gerado.</span>
+                )}
+              </p>
+            )}
             <select
               value={newStatus}
               onChange={(e) => setNewStatus(e.target.value)}

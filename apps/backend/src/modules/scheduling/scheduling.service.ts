@@ -6,11 +6,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, IsNull } from 'typeorm';
 import { AvailabilitySlot } from './availability-slot.entity';
-import { Session } from './session.entity';
+import { Session, SessionChannel } from './session.entity';
 import { Room } from '../rooms/room.entity';
 import { CreateAvailabilitySlotDto } from './dto/create-availability-slot.dto';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateSessionStatusDto } from './dto/update-session-status.dto';
+import { GoogleCalendarService } from '../../common/google-calendar/google-calendar.service';
 
 @Injectable()
 export class SchedulingService {
@@ -21,6 +22,7 @@ export class SchedulingService {
     private sessionsRepo: Repository<Session>,
     @InjectRepository(Room)
     private roomsRepo: Repository<Room>,
+    private readonly googleCalendar: GoogleCalendarService,
   ) {}
 
   // ── Availability Slots ────────────────────────────────────────────────────
@@ -56,12 +58,24 @@ export class SchedulingService {
       roomId = await this.allocateRoom(tenantId, scheduledAt);
     }
 
+    const channel = (dto.channel ?? 'presencial') as SessionChannel;
+    let meetLink = dto.meetLink ?? null;
+    if (channel === 'online' && !meetLink) {
+      meetLink = await this.googleCalendar.createMeetEvent({
+        summary: 'Aula de reforço (online)',
+        description: `Professor: ${dto.teacherId}${dto.studentId ? ` · Aluno: ${dto.studentId}` : ' · A definir'}`,
+        startTime: scheduledAt,
+        durationMinutes: dto.durationMinutes ?? 60,
+      });
+    }
+
     const session = this.sessionsRepo.create({
       ...dto,
       tenantId,
       scheduledAt,
       roomId,
-      channel: (dto.channel ?? 'presencial') as any,
+      channel,
+      meetLink,
     });
     return this.sessionsRepo.save(session);
   }
