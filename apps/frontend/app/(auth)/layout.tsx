@@ -4,7 +4,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="flex min-h-screen">
       {/* Painel ilustrativo — oculto no mobile */}
-      <div className="relative hidden flex-1 flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-blue-600 via-blue-500 to-sky-400 lg:flex">
+      <div className="relative hidden flex-1 flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#1E7A4C] via-[#3FA05C] to-[#9BC93F] lg:flex">
 
         <div className="absolute -left-20 -top-20 h-96 w-96 rounded-full bg-white/5" />
         <div className="absolute -bottom-32 -right-16 h-[500px] w-[500px] rounded-full bg-white/5" />
@@ -14,7 +14,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="relative z-10 flex flex-col items-center px-12 text-center">
           <div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-auto w-56 object-contain" />
+            <img src={LOGO_DATA_URI} alt="Clube de Estudos" className="h-auto w-56 object-contain" />
           </div>
 
           <p className="mt-8 text-sm leading-relaxed text-white/75">
@@ -34,7 +34,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="flex w-full flex-col items-center justify-center bg-gray-50 px-6 py-12 lg:w-[440px] lg:flex-none lg:px-12">
         <div className="mb-8 flex justify-center lg:hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-auto w-40 object-contain" />
+          <img src={LOGO_DATA_URI} alt="Clube de Estudos" className="h-auto w-40 object-contain" />
         </div>
 
         <div className="w-full max-w-sm">

@@ -5,7 +5,7 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'ReforçoPro — Gestão de Reforço Escolar',
+  title: 'Clube de Estudos — Gestão de Reforço Escolar',
   description: 'Plataforma de gestão de aulas de reforço escolar',
 };
 

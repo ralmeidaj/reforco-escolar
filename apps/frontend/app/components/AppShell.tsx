@@ -11,7 +11,7 @@ import { NotificationBell } from '@/app/components/NotificationBell';
 import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
   Calendar, DoorOpen, Monitor, CheckSquare, Wallet, BarChart2, Settings,
-  FileText, MessageCircle, TrendingUp, Brain, UserPlus, Award,
+  FileText, MessageCircle, TrendingUp, Brain, UserPlus, Award, Megaphone,
 } from 'lucide-react';
 
 interface Me { name: string; email: string; role: string }
@@ -33,6 +33,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/attendance',   label: 'Presenças',     icon: CheckSquare },
   { href: '/admin/finance',      label: 'Financeiro',    icon: Wallet },
   { href: '/admin/reports',      label: 'Relatórios',    icon: BarChart2 },
+  { href: '/admin/announcements', label: 'Avisos',       icon: Megaphone },
   { href: '/admin/settings',     label: 'Configurações', icon: Settings },
 ];
 
@@ -45,6 +46,7 @@ const teacherNav: NavItem[] = [
   { href: '/teacher/students',     label: 'Alunos',        icon: Users },
   { href: '/teacher/chat',         label: 'Chat',          icon: MessageCircle },
   { href: '/teacher/ai',           label: 'IA Pedagógica', icon: Brain },
+  { href: '/teacher/announcements', label: 'Avisos',       icon: Megaphone },
 ];
 
 const studentNav: NavItem[] = [
@@ -55,6 +57,7 @@ const studentNav: NavItem[] = [
   { href: '/student/activity',   label: 'Atividades',       icon: FileText },
   { href: '/student/progress',   label: 'Evolução',         icon: TrendingUp },
   { href: '/student/ai',         label: 'Meu Panorama',     icon: Brain },
+  { href: '/student/announcements', label: 'Avisos',        icon: Megaphone },
 ];
 
 const guardianNav: NavItem[] = [
@@ -65,6 +68,7 @@ const guardianNav: NavItem[] = [
   { href: '/guardian/finance',     label: 'Financeiro', icon: Wallet },
   { href: '/guardian/chat',        label: 'Chat',       icon: MessageCircle },
   { href: '/guardian/ai',          label: 'Panorama',   icon: Brain },
+  { href: '/guardian/announcements', label: 'Avisos',  icon: Megaphone },
 ];
 
 const navByRole: Record<string, NavItem[]> = {
@@ -167,7 +171,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside className={cn(
         'fixed inset-y-0 left-0 z-50 flex w-64 flex-col transition-transform duration-200 ease-in-out',
-        'bg-gradient-to-b from-blue-600 via-blue-500 to-sky-400',
+        'bg-gradient-to-b from-[#123B2C] via-[#1E7A4C] to-[#6FA83C]',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         'lg:translate-x-0',
       )}>
@@ -176,7 +180,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div className="relative flex justify-center px-4 py-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO_DATA_URI} alt="ReforçoPro" className="h-14 w-auto" />
+          <img src={LOGO_DATA_URI} alt="Clube de Estudos" className="h-14 w-auto" />
           <button onClick={() => setSidebarOpen(false)} className="absolute right-2 top-2 rounded-lg p-1 text-white/60 hover:bg-white/10 lg:hidden">
             <CloseIcon />
           </button>
@@ -267,7 +271,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           >
             <MenuIcon />
           </button>
-          <span className="text-sm font-bold text-brand-600 lg:hidden">ReforçoPro</span>
+          <span className="text-sm font-bold text-brand-600 lg:hidden">Clube de Estudos</span>
 
           <div className="ml-auto flex items-center gap-3">
             <NotificationBell />
