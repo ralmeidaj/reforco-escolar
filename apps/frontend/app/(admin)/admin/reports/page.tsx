@@ -4,23 +4,28 @@ import { useState, useEffect } from 'react';
 import { api } from '@/app/lib/api';
 
 interface AdminKpis {
-  totalStudents: number;
   activeStudents: number;
-  totalTeachers: number;
-  sessionsThisMonth: number;
+  activeTeachers: number;
+  totalSessions: number;
+  completedSessions: number;
+  revenueTotal: number;
+  totalAbsences: number;
   attendanceRate: number;
-  revenueThisMonth: number;
-  pendingPayments: number;
 }
 
 interface StudentReport {
-  student: { id: string; name: string };
-  totalSessions: number;
-  attendedSessions: number;
   attendanceRate: number;
+  totalSessions: number;
+  presentCount: number;
   pendingTasks: number;
-  completedTasks: number;
-  currentLevel: string | null;
+  doneTasks: number;
+  studyLogCount: number;
+  progressBySubject: { subjectName: string; level: string }[];
+}
+
+interface StudentRow extends StudentReport {
+  id: string;
+  name: string;
 }
 
 function KpiCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
@@ -39,7 +44,7 @@ function SkeletonCard() {
 
 export default function AdminReportsPage() {
   const [kpis, setKpis] = useState<AdminKpis | null>(null);
-  const [students, setStudents] = useState<StudentReport[]>([]);
+  const [students, setStudents] = useState<StudentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [error, setError] = useState('');
@@ -55,14 +60,14 @@ export default function AdminReportsPage() {
     setLoadingStudents(true);
     api.get<{ id: string; name: string }[]>('/auth/users?role=student')
       .then(async ({ data }) => {
-        const reports = await Promise.all(
+        const rows = await Promise.all(
           data.slice(0, 20).map((s) =>
             api.get<StudentReport>(`/reports/student/${s.id}`)
-              .then((r) => r.data)
+              .then((r) => ({ id: s.id, name: s.name, ...r.data }))
               .catch(() => null),
           ),
         );
-        setStudents(reports.filter(Boolean) as StudentReport[]);
+        setStudents(rows.filter(Boolean) as StudentRow[]);
       })
       .catch(() => {})
       .finally(() => setLoadingStudents(false));
@@ -82,15 +87,15 @@ export default function AdminReportsPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {loading ? (
-          Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
+          Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
         ) : kpis ? (
           <>
-            <KpiCard label="Alunos ativos" value={kpis.activeStudents} sub={`de ${kpis.totalStudents} total`} />
-            <KpiCard label="Professores" value={kpis.totalTeachers} />
-            <KpiCard label="Aulas este mês" value={kpis.sessionsThisMonth} />
+            <KpiCard label="Alunos ativos" value={kpis.activeStudents} />
+            <KpiCard label="Professores ativos" value={kpis.activeTeachers} />
+            <KpiCard label="Aulas realizadas" value={kpis.completedSessions} sub={`de ${kpis.totalSessions} agendadas`} />
             <KpiCard label="Taxa de presença" value={`${kpis.attendanceRate ?? 0}%`} />
-            <KpiCard label="Receita este mês" value={`R$ ${Number(kpis.revenueThisMonth ?? 0).toFixed(2)}`} />
-            <KpiCard label="Pagamentos pendentes" value={kpis.pendingPayments ?? 0} />
+            <KpiCard label="Receita acumulada" value={`R$ ${Number(kpis.revenueTotal ?? 0).toFixed(2)}`} />
+            <KpiCard label="Faltas registradas" value={kpis.totalAbsences ?? 0} />
           </>
         ) : null}
       </div>
@@ -118,14 +123,14 @@ export default function AdminReportsPage() {
                   <th className="px-4 py-3">Aulas</th>
                   <th className="px-4 py-3">Presença</th>
                   <th className="px-4 py-3">Tarefas</th>
-                  <th className="px-4 py-3">Nível</th>
+                  <th className="px-4 py-3">Progresso</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {students.map((s) => (
-                  <tr key={s.student.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{s.student.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{s.attendedSessions}/{s.totalSessions}</td>
+                  <tr key={s.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-900">{s.name}</td>
+                    <td className="px-4 py-3 text-gray-600">{s.presentCount}/{s.totalSessions}</td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         s.attendanceRate >= 75 ? 'bg-green-100 text-green-700' :
@@ -136,9 +141,13 @@ export default function AdminReportsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {s.completedTasks}/{s.completedTasks + s.pendingTasks} concluídas
+                      {s.doneTasks}/{s.doneTasks + s.pendingTasks} concluídas
                     </td>
-                    <td className="px-4 py-3 text-gray-500 capitalize">{s.currentLevel ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-500">
+                      {s.progressBySubject.length === 0
+                        ? '—'
+                        : s.progressBySubject.map((p) => `${p.subjectName}: ${p.level}`).join(', ')}
+                    </td>
                   </tr>
                 ))}
               </tbody>

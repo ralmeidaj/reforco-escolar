@@ -6,13 +6,13 @@ import { Card, SkeletonCard, EmptyState, colors } from '../../../components/ui';
 import { useGuardianStudent } from '../../hooks/useGuardianStudent';
 
 interface GuardianReport {
-  studentName: string;
+  student: { id: string; name: string };
   attendanceRate: number;
-  absences: number;
+  totalSessions: number;
+  presentCount: number;
   pendingTasks: number;
-  lessonsRemaining: number | null;
-  lowBalance: boolean;
-  levelBySubject: Array<{ subjectName: string; level: string }>;
+  lessonsRemaining: number;
+  progressBySubject: Array<{ subjectName: string; level: string }>;
 }
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -45,7 +45,7 @@ export function HomeScreen() {
     <SafeAreaView style={s.safe}>
       <View style={s.headerBar}>
         <Text style={s.greeting}>Acompanhamento</Text>
-        {report && <Text style={s.studentName}>{report.studentName}</Text>}
+        {report && <Text style={s.studentName}>{report.student.name}</Text>}
       </View>
 
       {students.length > 1 && (
@@ -70,20 +70,20 @@ export function HomeScreen() {
           <EmptyState icon="📊" message="Sem dados para exibir" />
         ) : (
           <>
-            {report.lowBalance && (
+            {report.lessonsRemaining <= 2 && (
               <View style={s.alert}>
                 <Text style={s.alertText}>⚠️ Saldo baixo: apenas {report.lessonsRemaining} aula(s) restante(s)</Text>
               </View>
             )}
             <View style={grid.row}>
               <KpiCard label="Frequência" value={`${report.attendanceRate ?? 0}%`} color="#16A34A" />
-              <KpiCard label="Faltas" value={String(report.absences ?? 0)} color={(report.absences ?? 0) > 2 ? '#DC2626' : '#6B7280'} />
+              <KpiCard label="Aulas realizadas" value={String(report.presentCount ?? 0)} color="#6B7280" />
               <KpiCard label="Tarefas" value={String(report.pendingTasks ?? 0)} color={(report.pendingTasks ?? 0) > 0 ? '#D97706' : '#16A34A'} />
             </View>
-            {report.levelBySubject.length > 0 && (
+            {report.progressBySubject.length > 0 && (
               <>
                 <Text style={s.section}>Evolução por disciplina</Text>
-                {report.levelBySubject.map((item) => (
+                {report.progressBySubject.map((item) => (
                   <Card key={item.subjectName}>
                     <View style={row.between}>
                       <Text style={s.subjectName}>{item.subjectName}</Text>

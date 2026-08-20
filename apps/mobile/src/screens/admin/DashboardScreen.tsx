@@ -6,11 +6,12 @@ import { Card, SkeletonCard, colors } from '../../../components/ui';
 
 interface KPIs {
   activeStudents: number;
-  attendancePercent: number;
-  revenueMonth: number;
-  sessionsToday: number;
-  absencesToday: number;
-  lowBalanceStudents: number;
+  activeTeachers: number;
+  totalSessions: number;
+  completedSessions: number;
+  revenueTotal: number;
+  totalAbsences: number;
+  attendanceRate: number;
 }
 
 function KPICard({ icon, label, value, color }: { icon: string; label: string; value: string | number; color?: string }) {
@@ -31,7 +32,7 @@ export function DashboardScreen() {
   const load = useCallback(() => {
     api.get('/reports/admin/kpis')
       .then(({ data }) => setData(data))
-      .catch(() => setData({ activeStudents: 0, attendancePercent: 0, revenueMonth: 0, sessionsToday: 0, absencesToday: 0, lowBalanceStudents: 0 }))
+      .catch(() => setData({ activeStudents: 0, activeTeachers: 0, totalSessions: 0, completedSessions: 0, revenueTotal: 0, totalAbsences: 0, attendanceRate: 0 }))
       .finally(() => setLoading(false));
   }, []);
 
@@ -54,17 +55,14 @@ export function DashboardScreen() {
         {loading || !data
           ? [1, 2, 3, 4].map((i) => <SkeletonCard key={i} height={90} />)
           : <>
-              <Text style={s.section}>Hoje</Text>
-              <View style={s.grid}>
-                <KPICard icon="📅" label="Aulas hoje" value={data.sessionsToday ?? 0} />
-                <KPICard icon="❌" label="Faltas hoje" value={data.absencesToday ?? 0} color={(data.absencesToday ?? 0) > 0 ? colors.danger : undefined} />
-              </View>
               <Text style={s.section}>Geral</Text>
               <View style={s.grid}>
                 <KPICard icon="👥" label="Alunos ativos" value={data.activeStudents ?? 0} />
-                <KPICard icon="📊" label="Frequência" value={`${data.attendancePercent ?? 0}%`} color={(data.attendancePercent ?? 0) < 75 ? colors.warning : colors.success} />
-                <KPICard icon="💰" label="Receita mês" value={brlFormat(data.revenueMonth)} />
-                <KPICard icon="⚠️" label="Saldo baixo" value={data.lowBalanceStudents ?? 0} color={(data.lowBalanceStudents ?? 0) > 0 ? colors.warning : undefined} />
+                <KPICard icon="👩‍🏫" label="Professores ativos" value={data.activeTeachers ?? 0} />
+                <KPICard icon="📅" label="Aulas realizadas" value={`${data.completedSessions ?? 0}/${data.totalSessions ?? 0}`} />
+                <KPICard icon="📊" label="Frequência" value={`${data.attendanceRate ?? 0}%`} color={(data.attendanceRate ?? 0) < 75 ? colors.warning : colors.success} />
+                <KPICard icon="💰" label="Receita acumulada" value={brlFormat(data.revenueTotal)} />
+                <KPICard icon="❌" label="Faltas registradas" value={data.totalAbsences ?? 0} color={(data.totalAbsences ?? 0) > 0 ? colors.danger : undefined} />
               </View>
             </>
         }
