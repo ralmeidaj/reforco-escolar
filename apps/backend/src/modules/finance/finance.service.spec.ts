@@ -5,6 +5,8 @@ import { FinanceService } from './finance.service';
 import { Plan } from './plan.entity';
 import { StudentPlan } from './student-plan.entity';
 import { Payment } from './payment.entity';
+import { GuardianStudent } from '../subjects/guardian-student.entity';
+import { NotificationsService } from '../communication/notifications.service';
 
 const makeRepo = () => ({
   find: jest.fn(),
@@ -20,6 +22,8 @@ describe('FinanceService', () => {
   let planRepo: ReturnType<typeof makeRepo>;
   let studentPlanRepo: ReturnType<typeof makeRepo>;
   let paymentRepo: ReturnType<typeof makeRepo>;
+  let guardianStudentRepo: ReturnType<typeof makeRepo>;
+  let notifications: { send: jest.Mock; sendPush: jest.Mock };
 
   const tenantId = 'tenant-1';
   const studentId = 'student-1';
@@ -28,6 +32,9 @@ describe('FinanceService', () => {
     planRepo = makeRepo();
     studentPlanRepo = makeRepo();
     paymentRepo = makeRepo();
+    guardianStudentRepo = makeRepo();
+    guardianStudentRepo.find.mockResolvedValue([]);
+    notifications = { send: jest.fn(), sendPush: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -35,6 +42,8 @@ describe('FinanceService', () => {
         { provide: getRepositoryToken(Plan), useValue: planRepo },
         { provide: getRepositoryToken(StudentPlan), useValue: studentPlanRepo },
         { provide: getRepositoryToken(Payment), useValue: paymentRepo },
+        { provide: getRepositoryToken(GuardianStudent), useValue: guardianStudentRepo },
+        { provide: NotificationsService, useValue: notifications },
       ],
     }).compile();
     service = module.get<FinanceService>(FinanceService);
@@ -103,6 +112,44 @@ describe('FinanceService', () => {
     it('throws NotFoundException when plan not found', async () => {
       studentPlanRepo.findOne.mockResolvedValue(null);
       await expect(service.decrementLesson(tenantId, 'x')).rejects.toThrow(NotFoundException);
+    });
+
+    it('notifies guardians when remaining lessons first cross the low balance threshold', async () => {
+      const sp = { id: 'sp-1', tenantId, studentId, lessonsTotal: 5, lessonsUsed: 2 };
+      studentPlanRepo.findOne.mockResolvedValue(sp);
+      studentPlanRepo.save.mockImplementation((v) => Promise.resolve(v));
+      guardianStudentRepo.find.mockResolvedValue([
+        { guardianId: 'guardian-1' },
+        { guardianId: 'guardian-2' },
+      ]);
+
+      await service.decrementLesson(tenantId, 'sp-1');
+
+      expect(guardianStudentRepo.find).toHaveBeenCalledWith({ where: { tenantId, studentId } });
+      expect(notifications.send).toHaveBeenCalledTimes(2);
+      expect(notifications.send).toHaveBeenCalledWith(expect.objectContaining({ userId: 'guardian-1', type: 'finance' }));
+      expect(notifications.send).toHaveBeenCalledWith(expect.objectContaining({ userId: 'guardian-2', type: 'finance' }));
+      expect(notifications.sendPush).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not notify again if balance was already low before this decrement', async () => {
+      const sp = { id: 'sp-1', tenantId, studentId, lessonsTotal: 5, lessonsUsed: 4 };
+      studentPlanRepo.findOne.mockResolvedValue(sp);
+      studentPlanRepo.save.mockImplementation((v) => Promise.resolve(v));
+
+      await service.decrementLesson(tenantId, 'sp-1');
+
+      expect(notifications.send).not.toHaveBeenCalled();
+    });
+
+    it('does not notify while remaining lessons are still above the threshold', async () => {
+      const sp = { id: 'sp-1', tenantId, studentId, lessonsTotal: 10, lessonsUsed: 2 };
+      studentPlanRepo.findOne.mockResolvedValue(sp);
+      studentPlanRepo.save.mockImplementation((v) => Promise.resolve(v));
+
+      await service.decrementLesson(tenantId, 'sp-1');
+
+      expect(notifications.send).not.toHaveBeenCalled();
     });
   });
 

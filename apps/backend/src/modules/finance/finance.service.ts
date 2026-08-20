@@ -4,11 +4,13 @@ import { Repository } from 'typeorm';
 import { Plan } from './plan.entity';
 import { StudentPlan } from './student-plan.entity';
 import { Payment } from './payment.entity';
+import { GuardianStudent } from '../subjects/guardian-student.entity';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
 import { EnrollStudentPlanDto } from './dto/enroll-student-plan.dto';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
+import { NotificationsService } from '../communication/notifications.service';
 
 const LOW_BALANCE_THRESHOLD = 2;
 
@@ -18,6 +20,8 @@ export class FinanceService {
     @InjectRepository(Plan) private readonly planRepo: Repository<Plan>,
     @InjectRepository(StudentPlan) private readonly studentPlanRepo: Repository<StudentPlan>,
     @InjectRepository(Payment) private readonly paymentRepo: Repository<Payment>,
+    @InjectRepository(GuardianStudent) private readonly guardianStudentRepo: Repository<GuardianStudent>,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // ─── Planos ───────────────────────────────────────────────────────────────
@@ -87,11 +91,26 @@ export class FinanceService {
     const sp = await this.studentPlanRepo.findOne({ where: { tenantId, id: studentPlanId } });
     if (!sp) throw new NotFoundException('Matrícula não encontrada');
     if (sp.lessonsUsed >= sp.lessonsTotal) throw new BadRequestException('Saldo de aulas esgotado');
+    const wasLow = sp.lessonsTotal - sp.lessonsUsed <= LOW_BALANCE_THRESHOLD;
     sp.lessonsUsed += 1;
-    if (sp.lessonsTotal - sp.lessonsUsed <= LOW_BALANCE_THRESHOLD) {
-      (sp as any)['_lowBalance'] = true;
+    const remaining = sp.lessonsTotal - sp.lessonsUsed;
+    const saved = await this.studentPlanRepo.save(sp);
+    if (!wasLow && remaining <= LOW_BALANCE_THRESHOLD) {
+      await this.notifyLowBalance(tenantId, sp.studentId, remaining);
     }
-    return this.studentPlanRepo.save(sp);
+    return saved;
+  }
+
+  private async notifyLowBalance(tenantId: string, studentId: string, remaining: number): Promise<void> {
+    const guardianLinks = await this.guardianStudentRepo.find({ where: { tenantId, studentId } });
+    const title = 'Saldo de aulas baixo';
+    const body = remaining > 0
+      ? `Restam apenas ${remaining} aula(s) no pacote. Entre em contato para renovar.`
+      : 'O pacote de aulas foi esgotado. Entre em contato para renovar.';
+    for (const link of guardianLinks) {
+      await this.notifications.send({ tenantId, userId: link.guardianId, title, body, type: 'finance' });
+      await this.notifications.sendPush(link.guardianId, title, body);
+    }
   }
 
   async getBalance(tenantId: string, studentId: string): Promise<{ lessonsRemaining: number; lowBalance: boolean }> {
