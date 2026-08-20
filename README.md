@@ -58,7 +58,7 @@ cd apps/mobile && npx expo start
 | `R2_SECRET_ACCESS_KEY` | Cloudflare R2 secret key |
 | `R2_BUCKET_NAME` | Nome do bucket R2 |
 
-Variáveis opcionais (modo stub sem chave): `ASAAS_API_KEY`, `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `OPENAI_API_KEY`.
+Variáveis opcionais (modo stub sem chave): `ASAAS_API_KEY`, `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GOOGLE_REFRESH_TOKEN` (geração automática de link do Google Meet — ver Spec 3 no `CLAUDE.md` para o passo a passo de bootstrap).
 
 ## Comandos úteis
 

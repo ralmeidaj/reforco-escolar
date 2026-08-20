@@ -36,7 +36,7 @@ pnpm lint             # ESLint
 |---|---|---|---|
 | 1 | Tenancy + Auth | `src/modules/auth/`, `src/modules/tenants/` | `POST /auth/login`, `POST /auth/signup`, `GET /auth/me` |
 | 2 | Disciplinas e Turmas | `src/modules/subjects/`, `src/modules/groups/` | `GET/POST /subjects`, `GET/POST /groups` |
-| 3 | Agendamento + Salas | `src/modules/scheduling/`, `src/modules/rooms/` | `GET/POST /sessions`, `GET/POST /rooms`, `POST /rooms/:id/assignments`, `DELETE /rooms/:id/assignments/:aid`, `POST /rooms/:id/checkin`, `GET /rooms/checkins/active`, `PATCH /rooms/checkins/:id/reassign`, `GET /kiosk/rooms`, `GET /kiosk/students` |
+| 3 | Agendamento + Salas | `src/modules/scheduling/`, `src/modules/rooms/`, `src/common/google-calendar/` | `GET/POST /sessions` (gera `meetLink` via Google Meet automaticamente para sessões online, se configurado), `GET/POST /rooms`, `POST /rooms/:id/assignments`, `DELETE /rooms/:id/assignments/:aid`, `POST /rooms/:id/checkin`, `GET /rooms/checkins/active`, `PATCH /rooms/checkins/:id/reassign`, `GET /kiosk/rooms`, `GET /kiosk/students` |
 | 4 | Presença e Pedagógico | `src/modules/attendance/`, `src/modules/tasks/`, `src/modules/progress/` | `POST /attendances`, `GET/POST /tasks`, `GET /progress/:studentId` |
 | 5 | Comunicação | `src/modules/communication/` | `GET/POST /messages`, `GET /notifications`, `POST /announcements` |
 | 6 | Financeiro | `src/modules/finance/` | `GET/POST /plans`, `POST /student-plans`, `GET/POST /payments` |

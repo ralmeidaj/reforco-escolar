@@ -264,6 +264,10 @@ O `.env` fica na **raiz do monorepo**. O frontend usa `apps/frontend/.env.local`
 | `EVOLUTION_API_KEY` | `.env` | Não (stub sem chave — Spec 5) |
 | `OPENAI_API_KEY` | `.env` | Não (stub sem chave — Spec 9) |
 | `EXPO_ACCESS_TOKEN` | `.env` | Não (só necessário para envio push em escala) |
+| `GOOGLE_CLIENT_ID` | `.env` | Não (stub sem chave — Spec 3, geração automática de Meet) |
+| `GOOGLE_CLIENT_SECRET` | `.env` | Não (idem) |
+| `GOOGLE_REDIRECT_URI` | `.env` | Não (idem — deve bater exatamente com a registrada no Google Cloud Console) |
+| `GOOGLE_REFRESH_TOKEN` | `.env` | Não (idem — obtido uma única vez via `GET /super-admin/google/callback`, ver Spec 3) |
 
 ⚠️ **EAS Build (mobile) não lê `apps/mobile/.env`** — o arquivo é gitignored e o build na nuvem arquiva o projeto via `git`, então toda variável `EXPO_PUBLIC_*` fica `undefined` no app compilado (cai no fallback `localhost:3000`, que não funciona em dispositivo físico). Registrar cada variável também no EAS antes de buildar:
 ```bash
@@ -400,7 +404,7 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 - Professor cadastra horários disponíveis (recorrentes via `rrule` ou avulsos)
 - Agendamento pelo admin ou responsável; campo `student_id` é opcional ("A definir" — modelo walk-in)
 - Status da sessão: `agendada` → `confirmada` → `realizada` / `cancelada`
-- Canal: presencial ou online (link Meet)
+- **Canal: presencial ou online.** Para online, o `meetLink` pode ser colado manualmente ou, se a conta única do Google estiver configurada (ver abaixo), é **gerado automaticamente** via Google Calendar API ao criar a sessão (`SchedulingService.createSession`) — se a geração falhar ou não estiver configurada, a sessão é salva normalmente com `meetLink: null` (nunca bloqueia o agendamento)
 - Vista de calendário semanal e mensal
 - Cancelamento com motivo + notificação automática
 - CRUD de salas com capacidade máxima por tenant
@@ -413,6 +417,12 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 - **Grade de horários semanal por sala:** tabela `room_schedules` (dia da semana × turno → disciplina + professores); configurada via `GET/POST/DELETE /rooms/:id/schedules`; professores exibidos no formulário são filtrados pela disciplina selecionada (`GET /teacher-subjects?subjectId=`)
 - **Kiosk com filtro por turno:** exibe somente salas com horário cadastrado para o turno atual (Manhã 06-12h, Tarde 12-18h, Noite 18-24h); sem horário configurado para o turno, kiosk exibe "Nenhuma sala disponível"; resolve tenant via `?tenant=slug` ou localStorage
 - Admin visualiza ocupação em tempo real por sala ("Alunos no reforço agora"); kiosk permite check-in pelo aluno sem autenticação via busca por nome
+
+**Geração automática de link do Google Meet (conta única da plataforma):**
+- `GoogleCalendarService` (`src/common/google-calendar/`, `@Global()`) cria, via Google Calendar API, um evento com `conferenceData` (Meet) numa única conta Google da plataforma — não é por tenant (diferente da chave OpenAI do Spec 1). Nenhum e-mail de convite é enviado a professor/aluno (evento criado sem `attendees`), só o link é reaproveitado
+- Configuração via env vars `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GOOGLE_REFRESH_TOKEN` — sem as 4 preenchidas, a feature fica inativa e `meetLink` permanece `null`/manual, sem quebrar o agendamento
+- **Bootstrap único** (feito uma vez pelo operador da plataforma, não por tenant): `GET /super-admin/google/auth-url` (autenticado como super admin) devolve a URL de consentimento do Google → abrir no navegador e autorizar com a conta Google que vai hospedar as aulas → Google redireciona para `GET /super-admin/google/callback`, que devolve `{ refreshToken, accessToken }` → copiar o `refreshToken` para `GOOGLE_REFRESH_TOKEN` no `.env` e reiniciar o backend
+- Requer um projeto no Google Cloud Console com a **Google Calendar API** ativada e credenciais OAuth 2.0 (tipo "Web application") com `GOOGLE_REDIRECT_URI` cadastrada como URI de redirecionamento autorizada
 
 ---
 
