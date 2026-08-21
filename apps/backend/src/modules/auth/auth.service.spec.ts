@@ -159,26 +159,41 @@ describe('AuthService', () => {
   });
 
   describe('forgotPassword', () => {
-    it('não faz nada se e-mail não existe (sem vazar informação)', async () => {
-      mockUsersRepo.findOne.mockResolvedValue(null);
+    it('não faz nada se e-mail não existe em nenhum tenant (sem vazar informação)', async () => {
+      mockUsersRepo.find.mockResolvedValue([]);
       await expect(
-        service.forgotPassword('tenant-1', { email: 'naoexiste@test.com' }),
+        service.forgotPassword({ email: 'naoexiste@test.com' }),
       ).resolves.toBeUndefined();
       expect(mockRedis.setex).not.toHaveBeenCalled();
     });
 
-    it('grava token no Redis se usuário existe', async () => {
-      mockUsersRepo.findOne.mockResolvedValue({
-        id: 'user-1', email: 'joao@test.com', tenantId: 'tenant-1', name: 'João',
-      });
+    it('grava token no Redis com tenantId:userId se usuário existe', async () => {
+      mockUsersRepo.find.mockResolvedValue([
+        { id: 'user-1', email: 'joao@test.com', tenantId: 'tenant-1', name: 'João' },
+      ]);
+      mockTenantsRepo.findOne.mockResolvedValue({ id: 'tenant-1', slug: 'escola-a', name: 'Escola A' });
 
-      await service.forgotPassword('tenant-1', { email: 'joao@test.com' });
+      await service.forgotPassword({ email: 'joao@test.com' });
 
       expect(mockRedis.setex).toHaveBeenCalledWith(
-        expect.stringMatching(/^tenant-1:reset:/),
+        expect.stringMatching(/^reset:/),
         86400,
-        'user-1',
+        'tenant-1:user-1',
       );
+    });
+
+    it('envia um token por tenant quando o e-mail existe em mais de uma escola', async () => {
+      mockUsersRepo.find.mockResolvedValue([
+        { id: 'user-1', email: 'joao@test.com', tenantId: 'tenant-1', name: 'João' },
+        { id: 'user-2', email: 'joao@test.com', tenantId: 'tenant-2', name: 'João' },
+      ]);
+      mockTenantsRepo.findOne.mockResolvedValue({ id: 'tenant-x', slug: 'x', name: 'X' });
+
+      await service.forgotPassword({ email: 'joao@test.com' });
+
+      expect(mockRedis.setex).toHaveBeenCalledTimes(2);
+      expect(mockRedis.setex).toHaveBeenCalledWith(expect.any(String), 86400, 'tenant-1:user-1');
+      expect(mockRedis.setex).toHaveBeenCalledWith(expect.any(String), 86400, 'tenant-2:user-2');
     });
   });
 
@@ -186,22 +201,23 @@ describe('AuthService', () => {
     it('lança BadRequestException se token não existe no Redis', async () => {
       mockRedis.get.mockResolvedValue(null);
       await expect(
-        service.resetPassword('tenant-1', { token: 'invalid', password: 'nova-senha123' }),
+        service.resetPassword({ token: 'invalid', password: 'nova-senha123' }),
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('atualiza senha e revoga refresh tokens', async () => {
-      mockRedis.get.mockResolvedValue('user-1');
+    it('atualiza senha e revoga refresh tokens, resolvendo o tenant pelo valor gravado no Redis', async () => {
+      mockRedis.get.mockResolvedValue('tenant-1:user-1');
       mockUsersRepo.findOne.mockResolvedValue({
         id: 'user-1', tenantId: 'tenant-1', passwordHash: 'old-hash',
       });
       mockUsersRepo.save.mockResolvedValue({});
       mockRefreshTokensRepo.update.mockResolvedValue({ affected: 1 });
 
-      await service.resetPassword('tenant-1', { token: 'valid-token', password: 'nova-senha123' });
+      await service.resetPassword({ token: 'valid-token', password: 'nova-senha123' });
 
+      expect(mockUsersRepo.findOne).toHaveBeenCalledWith({ where: { id: 'user-1', tenantId: 'tenant-1' } });
       expect(mockUsersRepo.save).toHaveBeenCalledTimes(1);
-      expect(mockRedis.del).toHaveBeenCalledWith('tenant-1:reset:valid-token');
+      expect(mockRedis.del).toHaveBeenCalledWith('reset:valid-token');
       expect(mockRefreshTokensRepo.update).toHaveBeenCalledWith(
         { userId: 'user-1', revoked: false },
         { revoked: true },

@@ -111,8 +111,8 @@ export class AuthController {
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @ApiOperation({ summary: 'Solicitar link de recuperação de senha' })
   @ApiResponse({ status: 204, description: 'E-mail enviado se o endereço estiver cadastrado' })
-  async forgotPassword(@Req() req: any, @Body() dto: ForgotPasswordDto) {
-    await this.authService.forgotPassword(req.tenant?.id, dto);
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    await this.authService.forgotPassword(dto);
   }
 
   @Public()
@@ -122,8 +122,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Redefinir senha com token' })
   @ApiResponse({ status: 204, description: 'Senha redefinida com sucesso' })
   @ApiResponse({ status: 400, description: 'Token inválido ou expirado' })
-  async resetPassword(@Req() req: any, @Body() dto: ResetPasswordDto) {
-    await this.authService.resetPassword(req.tenant?.id, dto);
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.authService.resetPassword(dto);
   }
 
   @ApiBearerAuth()

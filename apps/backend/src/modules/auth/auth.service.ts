@@ -134,36 +134,44 @@ export class AuthService {
     await this.refreshTokensRepo.update({ userId, revoked: false }, { revoked: true });
   }
 
-  async forgotPassword(tenantId: string, dto: ForgotPasswordDto) {
-    const user = await this.usersRepo.findOne({ where: { tenantId, email: dto.email } });
-    // Sempre responde 200 para não vazar se o e-mail existe
-    if (!user) return;
-
-    const token = crypto.randomBytes(32).toString('hex');
-    const redisKey = `${tenantId}:reset:${token}`;
-    await this.redis.setex(redisKey, 86400, user.id); // TTL 24h
+  async forgotPassword(dto: ForgotPasswordDto) {
+    // Sem slug no fluxo de login (ver loginMobile) — resolve por e-mail em todos os
+    // tenants; se o mesmo e-mail existir em mais de uma escola, cada uma recebe seu
+    // próprio link. Sempre responde 200 para não vazar se o e-mail existe.
+    const users = await this.usersRepo.find({ where: { email: dto.email } });
+    if (users.length === 0) return;
 
     const frontendUrl = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:3001';
-    const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
 
-    if (this.resend) {
-      await this.resend.emails.send({
-        from: 'noreply@reforcos.app',
-        to: user.email,
-        subject: 'Redefinir senha — Reforços Escolares',
-        html: `<p>Clique no link abaixo para redefinir sua senha (válido por 24h):</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
-      });
-    } else {
-      // Dev sem RESEND_API_KEY configurada
-      console.log(`[AUTH] reset link: ${resetUrl}`);
+    for (const user of users) {
+      const token = crypto.randomBytes(32).toString('hex');
+      const redisKey = `reset:${token}`;
+      await this.redis.setex(redisKey, 86400, `${user.tenantId}:${user.id}`); // TTL 24h
+
+      const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
+      const tenant = await this.tenantsRepo.findOne({ where: { id: user.tenantId } });
+      const subject = tenant ? `Redefinir senha — ${tenant.name}` : 'Redefinir senha — Reforços Escolares';
+
+      if (this.resend) {
+        await this.resend.emails.send({
+          from: 'noreply@reforcos.app',
+          to: user.email,
+          subject,
+          html: `<p>Clique no link abaixo para redefinir sua senha (válido por 24h):</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
+        });
+      } else {
+        // Dev sem RESEND_API_KEY configurada
+        console.log(`[AUTH] reset link (${tenant?.slug ?? user.tenantId}): ${resetUrl}`);
+      }
     }
   }
 
-  async resetPassword(tenantId: string, dto: ResetPasswordDto) {
-    const redisKey = `${tenantId}:reset:${dto.token}`;
-    const userId = await this.redis.get(redisKey);
-    if (!userId) throw new BadRequestException('Token inválido ou expirado');
+  async resetPassword(dto: ResetPasswordDto) {
+    const redisKey = `reset:${dto.token}`;
+    const stored = await this.redis.get(redisKey);
+    if (!stored) throw new BadRequestException('Token inválido ou expirado');
 
+    const [tenantId, userId] = stored.split(':');
     const user = await this.usersRepo.findOne({ where: { id: userId, tenantId } });
     if (!user) throw new BadRequestException('Token inválido ou expirado');
 

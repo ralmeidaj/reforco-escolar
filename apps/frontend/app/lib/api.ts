@@ -25,10 +25,13 @@ function createApiClient(): AxiosInstance {
     withCredentials: true,
   });
 
-  // injeta X-Tenant-Slug em todas as requisições, exceto no login sem slug
-  // (tenant-agnóstico por design — um slug adivinhado do subdomínio quebraria a resolução)
+  // Endpoints tenant-agnósticos por design (resolvem o tenant pelo e-mail/token, não
+  // pelo slug) — um slug adivinhado do subdomínio quebraria a resolução no backend.
+  const TENANT_AGNOSTIC_PATHS = ['/auth/login/mobile', '/auth/forgot-password', '/auth/reset-password'];
+
+  // injeta X-Tenant-Slug em todas as outras requisições
   client.interceptors.request.use((config) => {
-    if (config.url === '/auth/login/mobile') return config;
+    if (config.url && TENANT_AGNOSTIC_PATHS.includes(config.url)) return config;
     const slug = getTenantSlug();
     if (slug) config.headers['X-Tenant-Slug'] = slug;
     return config;
