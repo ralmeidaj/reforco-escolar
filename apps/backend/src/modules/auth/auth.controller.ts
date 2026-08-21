@@ -69,8 +69,14 @@ export class AuthController {
   @ApiOperation({ summary: 'Login mobile — sem slug, retorna tenantSlug no body' })
   @ApiResponse({ status: 200, description: 'Login bem-sucedido ou seleção de escola necessária' })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
-  async loginMobile(@Body() dto: LoginDto) {
-    return this.authService.loginMobile(dto);
+  async loginMobile(@Res({ passthrough: true }) res: any, @Body() dto: LoginDto) {
+    const result = await this.authService.loginMobile(dto);
+    // Web usa esta rota pra resolver o tenant sem slug; o cookie é o que autentica
+    // chamadas diretas à API (mobile ignora — usa Authorization: Bearer)
+    if ('accessToken' in result) {
+      this.setAccessCookie(res, result.accessToken);
+    }
+    return result;
   }
 
   @Public()
