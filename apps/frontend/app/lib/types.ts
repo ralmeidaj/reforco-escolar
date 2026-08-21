@@ -13,6 +13,15 @@ export interface AuthResponse {
   user: AuthUser;
 }
 
+export interface TenantOption {
+  slug: string;
+  name: string;
+}
+
+export type MobileLoginResponse =
+  | (AuthResponse & { tenantSlug: string })
+  | { requireTenantSelection: true; tenants: TenantOption[] };
+
 export interface OpenAiKeyStatus {
   hasKey: boolean;
   keyPreview: string | null;

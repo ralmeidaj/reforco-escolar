@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api, setTenantSlug } from '@/app/lib/api';
 import { LoadingOverlay } from '@/app/components/LoadingOverlay';
-import type { AuthResponse, UserRole } from '@/app/lib/types';
+import type { AuthResponse, MobileLoginResponse, TenantOption, UserRole } from '@/app/lib/types';
 
 const ROLE_REDIRECTS: Record<UserRole, string> = {
   tenant_admin: '/admin',
@@ -16,33 +16,98 @@ const ROLE_REDIRECTS: Record<UserRole, string> = {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [slug, setSlug] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [tenantOptions, setTenantOptions] = useState<TenantOption[] | null>(null);
+
+  async function finishLogin(data: AuthResponse) {
+    await fetch('/api/auth/callback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken: data.accessToken, refreshToken: data.refreshToken }),
+    });
+    window.location.assign(ROLE_REDIRECTS[data.user.role] ?? '/');
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      setTenantSlug(slug.trim());
-      const { data } = await api.post<AuthResponse>('/auth/login', { email, password });
-      await fetch('/api/auth/callback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessToken: data.accessToken, refreshToken: data.refreshToken }),
-      });
-      window.location.assign(ROLE_REDIRECTS[data.user.role] ?? '/');
+      const { data } = await api.post<MobileLoginResponse>('/auth/login/mobile', { email, password });
+      if ('requireTenantSelection' in data) {
+        setTenantOptions(data.tenants);
+        setLoading(false);
+        return;
+      }
+      setTenantSlug(data.tenantSlug);
+      await finishLogin(data);
     } catch (err: any) {
       const msg = Array.isArray(err.response?.data?.message)
         ? err.response.data.message.join(', ')
         : (err.response?.data?.message ?? err.message ?? 'E-mail ou senha incorretos');
       setError(msg);
-    } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSelectTenant(slug: string) {
+    setError('');
+    setLoading(true);
+    try {
+      setTenantSlug(slug);
+      const { data } = await api.post<AuthResponse>('/auth/login', { email, password });
+      await finishLogin(data);
+    } catch (err: any) {
+      const msg = Array.isArray(err.response?.data?.message)
+        ? err.response.data.message.join(', ')
+        : (err.response?.data?.message ?? err.message ?? 'E-mail ou senha incorretos');
+      setError(msg);
+      setLoading(false);
+    }
+  }
+
+  if (tenantOptions) {
+    return (
+      <>
+      <LoadingOverlay visible={loading} message="Entrando..." />
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Escolha sua escola</h2>
+          <p className="mt-1 text-sm text-gray-500">Seu e-mail está cadastrado em mais de um reforço.</p>
+        </div>
+
+        {error && (
+          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>
+        )}
+
+        <div className="space-y-2">
+          {tenantOptions.map((t) => (
+            <button
+              key={t.slug}
+              type="button"
+              disabled={loading}
+              onClick={() => handleSelectTenant(t.slug)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-left text-sm font-medium text-gray-800 transition hover:border-brand-500 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => { setTenantOptions(null); setError(''); }}
+          className="text-sm text-gray-500 hover:underline disabled:opacity-60"
+        >
+          ← Voltar
+        </button>
+      </div>
+      </>
+    );
   }
 
   return (
@@ -57,22 +122,6 @@ export default function LoginPage() {
       {error && (
         <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>
       )}
-
-      <div>
-        <label htmlFor="slug" className="mb-1 block text-sm font-medium text-gray-700">
-          Código do reforço
-        </label>
-        <input
-          id="slug"
-          type="text"
-          required
-          disabled={loading}
-          value={slug}
-          onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:bg-gray-50 disabled:opacity-60"
-          placeholder="ex.: clube-estudo"
-        />
-      </div>
 
       <div>
         <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700">
