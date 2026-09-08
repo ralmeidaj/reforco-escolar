@@ -284,4 +284,45 @@ describe('AuthService', () => {
       await expect(service.getProfile('ghost')).rejects.toThrow(UnauthorizedException);
     });
   });
+
+  describe('createUserDirect', () => {
+    it('cria usuário com os campos de perfil opcionais', async () => {
+      mockUsersRepo.findOne.mockResolvedValue(null);
+      mockUsersRepo.save.mockImplementation((u: any) => Promise.resolve({ id: 'user-1', ...u }));
+
+      const result = await service.createUserDirect('tenant-1', {
+        name: 'Aluno Teste', email: 'aluno@test.com', role: 'student', password: 'senha123',
+        birthDate: '2012-05-20', address: 'Rua X, 123', notes: 'Precisa melhorar em frações',
+      });
+
+      expect(result.birthDate).toBe('2012-05-20');
+      expect(result.address).toBe('Rua X, 123');
+      expect(result.notes).toBe('Precisa melhorar em frações');
+    });
+
+    it('lança ConflictException se e-mail já cadastrado nesta escola', async () => {
+      mockUsersRepo.findOne.mockResolvedValue({ id: 'existing' });
+      await expect(
+        service.createUserDirect('tenant-1', { name: 'X', email: 'x@test.com', role: 'student', password: 'senha123' }),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('updateUserProfile', () => {
+    it('atualiza somente os campos fornecidos', async () => {
+      const user = { id: 'user-1', tenantId: 'tenant-1', name: 'Antigo', birthDate: null, address: null, notes: null, paymentDay: null };
+      mockUsersRepo.findOne.mockResolvedValue(user);
+      mockUsersRepo.save.mockImplementation((u: any) => Promise.resolve(u));
+
+      const result = await service.updateUserProfile('tenant-1', 'user-1', { paymentDay: 10 });
+
+      expect(result.paymentDay).toBe(10);
+      expect(result.name).toBe('Antigo');
+    });
+
+    it('lança UnauthorizedException se usuário não existe no tenant', async () => {
+      mockUsersRepo.findOne.mockResolvedValue(null);
+      await expect(service.updateUserProfile('tenant-1', 'ghost', { name: 'X' })).rejects.toThrow(UnauthorizedException);
+    });
+  });
 });

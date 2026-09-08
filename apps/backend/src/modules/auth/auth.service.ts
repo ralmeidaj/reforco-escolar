@@ -23,6 +23,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SendInviteDto } from './dto/send-invite.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { CreateUserDirectDto } from './dto/create-user-direct.dto';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { REDIS_CLIENT } from '../../common/redis/redis.module';
 import type Redis from 'ioredis';
 
@@ -59,9 +60,33 @@ export class AuthService {
       role: dto.role as UserRole,
       passwordHash,
       emailVerified: true,
+      birthDate: dto.birthDate ?? null,
+      address: dto.address ?? null,
+      notes: dto.notes ?? null,
+      paymentDay: dto.paymentDay ?? null,
     });
     const saved = await this.usersRepo.save(user);
-    return { id: saved.id, name: saved.name, email: saved.email, role: saved.role };
+    return {
+      id: saved.id, name: saved.name, email: saved.email, role: saved.role,
+      birthDate: saved.birthDate, address: saved.address, notes: saved.notes, paymentDay: saved.paymentDay,
+    };
+  }
+
+  async updateUserProfile(tenantId: string, userId: string, dto: UpdateUserProfileDto) {
+    const user = await this.usersRepo.findOne({ where: { tenantId, id: userId } });
+    if (!user) throw new UnauthorizedException();
+
+    if (dto.name !== undefined) user.name = dto.name;
+    if (dto.birthDate !== undefined) user.birthDate = dto.birthDate;
+    if (dto.address !== undefined) user.address = dto.address;
+    if (dto.notes !== undefined) user.notes = dto.notes;
+    if (dto.paymentDay !== undefined) user.paymentDay = dto.paymentDay;
+
+    const saved = await this.usersRepo.save(user);
+    return {
+      id: saved.id, name: saved.name, email: saved.email, role: saved.role,
+      birthDate: saved.birthDate, address: saved.address, notes: saved.notes, paymentDay: saved.paymentDay,
+    };
   }
 
   async signup(tenantId: string, dto: SignupDto) {
@@ -242,7 +267,14 @@ export class AuthService {
   listUsers(tenantId: string, role?: string) {
     const where: any = { tenantId };
     if (role) where.role = role;
-    return this.usersRepo.find({ where, order: { name: 'ASC' }, select: { id: true, name: true, email: true, role: true } });
+    return this.usersRepo.find({
+      where,
+      order: { name: 'ASC' },
+      select: {
+        id: true, name: true, email: true, role: true,
+        birthDate: true, address: true, notes: true, paymentDay: true,
+      },
+    });
   }
 
   async getProfile(userId: string) {

@@ -4,6 +4,7 @@ import {
   Get,
   Patch,
   Body,
+  Param,
   Req,
   Res,
   Query,
@@ -17,6 +18,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBody,
+  ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -27,6 +29,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SendInviteDto } from './dto/send-invite.dto';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { CreateUserDirectDto } from './dto/create-user-direct.dto';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 
@@ -182,6 +185,16 @@ export class AuthController {
   @ApiResponse({ status: 409, description: 'E-mail já cadastrado' })
   createUserDirect(@Req() req: any, @Body() dto: CreateUserDirectDto) {
     return this.authService.createUserDirect(req.tenant.id, dto);
+  }
+
+  @ApiBearerAuth()
+  @Roles('tenant_admin')
+  @Patch('users/:id')
+  @ApiOperation({ summary: 'Editar perfil de um usuário do tenant (admin)' })
+  @ApiParam({ name: 'id', type: 'string' })
+  @ApiResponse({ status: 200, description: 'Usuário atualizado' })
+  updateUserProfile(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateUserProfileDto) {
+    return this.authService.updateUserProfile(req.tenant.id, id, dto);
   }
 
   @ApiBearerAuth()

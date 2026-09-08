@@ -47,6 +47,18 @@ export class User {
   @Column({ nullable: true, type: 'varchar' })
   pushToken: string | null;
 
+  @Column({ name: 'birth_date', nullable: true, type: 'date' })
+  birthDate: string | null;
+
+  @Column({ nullable: true, type: 'text' })
+  address: string | null;
+
+  @Column({ nullable: true, type: 'text' })
+  notes: string | null;
+
+  @Column({ name: 'payment_day', nullable: true, type: 'smallint' })
+  paymentDay: number | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

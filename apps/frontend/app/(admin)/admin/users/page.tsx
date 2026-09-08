@@ -5,7 +5,10 @@ import { api } from '@/app/lib/api';
 import { Spinner } from '@/app/components/Spinner';
 import { cn } from '@/app/lib/utils';
 
-interface User { id: string; name: string; email: string; role: string }
+interface User {
+  id: string; name: string; email: string; role: string;
+  birthDate?: string | null; address?: string | null; notes?: string | null; paymentDay?: number | null;
+}
 interface Subject { id: string; name: string; color: string }
 
 type Tab = 'teachers' | 'students' | 'guardians';
@@ -53,9 +56,17 @@ export default function UsersPage() {
 
   // Modal de cadastro direto
   const [registerModal, setRegisterModal] = useState(false);
-  const [registerForm, setRegisterForm] = useState({ name: '', email: '', password: '' });
+  const [registerForm, setRegisterForm] = useState({
+    name: '', email: '', password: '', birthDate: '', address: '', notes: '', paymentDay: '',
+  });
   const [registering, setRegistering] = useState(false);
   const [registerError, setRegisterError] = useState('');
+
+  // Modal de edição
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', birthDate: '', address: '', notes: '', paymentDay: '' });
+  const [editing, setEditing] = useState(false);
+  const [editError, setEditError] = useState('');
 
   async function loadTeacherSubjects(teachers: User[]) {
     const entries = await Promise.all(
@@ -152,9 +163,18 @@ export default function UsersPage() {
     setRegisterError('');
     setRegistering(true);
     try {
-      await api.post('/auth/users', { ...registerForm, role: TAB_INVITE_ROLE[tab] });
+      await api.post('/auth/users', {
+        name: registerForm.name,
+        email: registerForm.email,
+        password: registerForm.password,
+        role: TAB_INVITE_ROLE[tab],
+        birthDate: registerForm.birthDate || undefined,
+        address: registerForm.address || undefined,
+        ...(tab === 'students' ? { notes: registerForm.notes || undefined } : {}),
+        ...(tab === 'guardians' && registerForm.paymentDay ? { paymentDay: Number(registerForm.paymentDay) } : {}),
+      });
       setRegisterModal(false);
-      setRegisterForm({ name: '', email: '', password: '' });
+      setRegisterForm({ name: '', email: '', password: '', birthDate: '', address: '', notes: '', paymentDay: '' });
       setLoading(true);
       api.get<User[]>(`/auth/users?role=${TAB_ROLES[tab]}`).then(({ data }) => setUsers(data)).finally(() => setLoading(false));
     } catch (err: any) {
@@ -164,6 +184,43 @@ export default function UsersPage() {
       setRegisterError(msg);
     } finally {
       setRegistering(false);
+    }
+  }
+
+  function openEditModal(u: User) {
+    setEditUser(u);
+    setEditForm({
+      name: u.name,
+      birthDate: u.birthDate ?? '',
+      address: u.address ?? '',
+      notes: u.notes ?? '',
+      paymentDay: u.paymentDay != null ? String(u.paymentDay) : '',
+    });
+    setEditError('');
+  }
+
+  async function handleUpdateUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editUser) return;
+    setEditError('');
+    setEditing(true);
+    try {
+      const { data } = await api.patch<User>(`/auth/users/${editUser.id}`, {
+        name: editForm.name,
+        birthDate: editForm.birthDate || undefined,
+        address: editForm.address || undefined,
+        ...(editUser.role === 'student' ? { notes: editForm.notes || undefined } : {}),
+        ...(editUser.role === 'guardian' && editForm.paymentDay ? { paymentDay: Number(editForm.paymentDay) } : {}),
+      });
+      setUsers((prev) => prev.map((u) => (u.id === editUser.id ? { ...u, ...data } : u)));
+      setEditUser(null);
+    } catch (err: any) {
+      const msg = Array.isArray(err.response?.data?.message)
+        ? err.response.data.message.join(', ')
+        : (err.response?.data?.message ?? 'Erro ao salvar');
+      setEditError(msg);
+    } finally {
+      setEditing(false);
     }
   }
 
@@ -243,14 +300,22 @@ export default function UsersPage() {
                       </div>
                     )}
                   </div>
-                  {tab === 'teachers' && (
+                  <div className="flex shrink-0 items-center gap-2">
+                    {tab === 'teachers' && (
+                      <button
+                        onClick={() => { setLinkModal({ teacher: u }); setLinkError(''); setSelectedSubject(''); }}
+                        className="rounded-lg border border-brand-200 px-3 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50"
+                      >
+                        + Disciplina
+                      </button>
+                    )}
                     <button
-                      onClick={() => { setLinkModal({ teacher: u }); setLinkError(''); setSelectedSubject(''); }}
-                      className="shrink-0 rounded-lg border border-brand-200 px-3 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50"
+                      onClick={() => openEditModal(u)}
+                      className="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
                     >
-                      + Disciplina
+                      Editar
                     </button>
-                  )}
+                  </div>
                 </div>
               </li>
             ))}
@@ -299,10 +364,57 @@ export default function UsersPage() {
                 placeholder="Senha provisória (mín. 6 caracteres)"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
               />
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">Data de nascimento (opcional)</label>
+                <input
+                  type="date"
+                  disabled={registering}
+                  value={registerForm.birthDate}
+                  onChange={(e) => setRegisterForm((p) => ({ ...p, birthDate: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">Endereço completo (opcional)</label>
+                <input
+                  disabled={registering}
+                  value={registerForm.address}
+                  onChange={(e) => setRegisterForm((p) => ({ ...p, address: e.target.value }))}
+                  placeholder="Rua, número, bairro, cidade"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+                />
+              </div>
+              {tab === 'students' && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Observação — onde precisa melhorar (opcional)</label>
+                  <textarea
+                    rows={2}
+                    disabled={registering}
+                    value={registerForm.notes}
+                    onChange={(e) => setRegisterForm((p) => ({ ...p, notes: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+                  />
+                </div>
+              )}
+              {tab === 'guardians' && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Dia fixo de pagamento (opcional)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    disabled={registering}
+                    value={registerForm.paymentDay}
+                    onChange={(e) => setRegisterForm((p) => ({ ...p, paymentDay: e.target.value }))}
+                    placeholder="Ex.: 10"
+                    className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+                  />
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => { setRegisterModal(false); setRegisterForm({ name: '', email: '', password: '' }); }}
+                  onClick={() => { setRegisterModal(false); setRegisterForm({ name: '', email: '', password: '', birthDate: '', address: '', notes: '', paymentDay: '' }); }}
                   className="rounded-lg px-4 py-2 text-sm text-gray-500 hover:bg-gray-100"
                 >
                   Cancelar
@@ -429,6 +541,91 @@ export default function UsersPage() {
                 {linking ? <><Spinner size="sm" className="text-white" /> Vinculando...</> : 'Vincular'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Modal de edição */}
+      {editUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-base font-semibold text-gray-900">Editar {editUser.name}</h3>
+            <p className="mt-1 text-sm text-gray-500">{editUser.email}</p>
+            <form onSubmit={handleUpdateUser} className="mt-4 space-y-3">
+              {editError && (
+                <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{editError}</div>
+              )}
+              <input
+                required
+                disabled={editing}
+                value={editForm.name}
+                onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder="Nome completo"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+              />
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">Data de nascimento</label>
+                <input
+                  type="date"
+                  disabled={editing}
+                  value={editForm.birthDate}
+                  onChange={(e) => setEditForm((p) => ({ ...p, birthDate: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">Endereço completo</label>
+                <input
+                  disabled={editing}
+                  value={editForm.address}
+                  onChange={(e) => setEditForm((p) => ({ ...p, address: e.target.value }))}
+                  placeholder="Rua, número, bairro, cidade"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+                />
+              </div>
+              {editUser.role === 'student' && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Observação — onde precisa melhorar</label>
+                  <textarea
+                    rows={2}
+                    disabled={editing}
+                    value={editForm.notes}
+                    onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+                  />
+                </div>
+              )}
+              {editUser.role === 'guardian' && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-500">Dia fixo de pagamento</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={31}
+                    disabled={editing}
+                    value={editForm.paymentDay}
+                    onChange={(e) => setEditForm((p) => ({ ...p, paymentDay: e.target.value }))}
+                    placeholder="Ex.: 10"
+                    className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+                  />
+                </div>
+              )}
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setEditUser(null)}
+                  className="rounded-lg px-4 py-2 text-sm text-gray-500 hover:bg-gray-100"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={editing}
+                  className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {editing ? <><Spinner size="sm" className="text-white" /> Salvando...</> : 'Salvar'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

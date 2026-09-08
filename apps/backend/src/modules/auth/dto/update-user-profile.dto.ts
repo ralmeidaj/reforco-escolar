@@ -1,24 +1,12 @@
-import { IsEmail, IsEnum, IsInt, IsISO8601, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsInt, IsISO8601, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
-export class CreateUserDirectDto {
-  @ApiProperty()
+export class UpdateUserProfileDto {
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
   @MinLength(2)
-  name: string;
-
-  @ApiProperty()
-  @IsEmail()
-  email: string;
-
-  @ApiProperty({ enum: ['student', 'teacher', 'guardian'] })
-  @IsEnum(['student', 'teacher', 'guardian'])
-  role: 'student' | 'teacher' | 'guardian';
-
-  @ApiProperty({ minLength: 6 })
-  @IsString()
-  @MinLength(6)
-  password: string;
+  name?: string;
 
   @ApiPropertyOptional({ example: '2012-05-20' })
   @IsOptional()
