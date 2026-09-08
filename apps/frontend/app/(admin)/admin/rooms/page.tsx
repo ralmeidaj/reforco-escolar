@@ -57,6 +57,12 @@ export default function RoomsPage() {
   const [form, setForm] = useState({ name: '', capacity: 10 });
   const [error, setError] = useState('');
 
+  // edição de sala
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', capacity: 10 });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+
   // reassign modal
   const [reassigning, setReassigning] = useState<ActiveCheckin | null>(null);
   const [newAssignmentId, setNewAssignmentId] = useState('');
@@ -105,6 +111,26 @@ export default function RoomsPage() {
   async function handleDelete(id: string) {
     await api.delete(`/rooms/${id}`);
     setRooms((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  function startEdit(room: Room) {
+    setEditingId(room.id);
+    setEditForm({ name: room.name, capacity: room.capacity });
+    setEditError('');
+  }
+
+  async function handleSaveEdit(id: string) {
+    setEditError('');
+    setEditSaving(true);
+    try {
+      await api.patch(`/rooms/${id}`, { name: editForm.name, capacity: editForm.capacity });
+      await loadRooms();
+      setEditingId(null);
+    } catch (err: any) {
+      setEditError(err.response?.data?.message ?? 'Erro ao salvar sala');
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   async function handleReassign() {
@@ -280,36 +306,80 @@ export default function RoomsPage() {
               return (
                 <li key={r.id} className="px-5 py-4 space-y-3">
                   {/* Header da sala */}
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900">{r.name}</p>
-                      {r.fixedGroup && <p className="text-xs text-gray-400">Turma: {r.fixedGroup.name}</p>}
-                    </div>
-                    <div className="flex w-32 flex-col gap-1">
-                      <div className="flex justify-between text-xs text-gray-500">
-                        <span>{occ} / {r.capacity}</span>
-                        <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-medium', occupancyColor(occ, r.capacity))}>
-                          {occ >= r.capacity ? 'Cheio' : occ === 0 ? 'Vazia' : 'Ocupada'}
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-gray-200">
-                        <div
-                          className={cn('h-1.5 rounded-full transition-all', occ >= r.capacity ? 'bg-red-500' : occ / r.capacity >= 0.75 ? 'bg-amber-400' : 'bg-emerald-500')}
-                          style={{ width: `${Math.min(100, (occ / r.capacity) * 100)}%` }}
+                  {editingId === r.id ? (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <input
+                          autoFocus
+                          disabled={editSaving}
+                          value={editForm.name}
+                          onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+                          className="flex-1 min-w-40 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
                         />
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-gray-500 whitespace-nowrap">Capacidade:</label>
+                          <input
+                            type="number" min={1} max={50} disabled={editSaving}
+                            value={editForm.capacity}
+                            onChange={(e) => setEditForm((p) => ({ ...p, capacity: Number(e.target.value) }))}
+                            className="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+                          />
+                        </div>
+                        <button
+                          onClick={() => handleSaveEdit(r.id)}
+                          disabled={editSaving || !editForm.name.trim()}
+                          className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+                        >
+                          {editSaving ? <Spinner size="sm" className="text-white" /> : null}
+                          {editSaving ? 'Salvando...' : 'Salvar'}
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          disabled={editSaving}
+                          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                        >
+                          Cancelar
+                        </button>
                       </div>
+                      {editError && <p className="text-xs text-red-600">{editError}</p>}
                     </div>
-                    <button
-                      onClick={() => openScheduleModal(r)}
-                      className="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                    >
-                      Horários
-                    </button>
-                    <button onClick={() => handleDelete(r.id)} className="text-xs text-red-500 hover:text-red-700">
-                      Remover
-                    </button>
-                  </div>
-
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">{r.name}</p>
+                        {r.fixedGroup && <p className="text-xs text-gray-400">Turma: {r.fixedGroup.name}</p>}
+                      </div>
+                      <div className="flex w-32 flex-col gap-1">
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>{occ} / {r.capacity}</span>
+                          <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-medium', occupancyColor(occ, r.capacity))}>
+                            {occ >= r.capacity ? 'Cheio' : occ === 0 ? 'Vazia' : 'Ocupada'}
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-gray-200">
+                          <div
+                            className={cn('h-1.5 rounded-full transition-all', occ >= r.capacity ? 'bg-red-500' : occ / r.capacity >= 0.75 ? 'bg-amber-400' : 'bg-emerald-500')}
+                            style={{ width: `${Math.min(100, (occ / r.capacity) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => openScheduleModal(r)}
+                        className="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                      >
+                        Horários
+                      </button>
+                      <button
+                        onClick={() => startEdit(r)}
+                        className="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                      >
+                        Editar
+                      </button>
+                      <button onClick={() => handleDelete(r.id)} className="text-xs text-red-500 hover:text-red-700">
+                        Remover
+                      </button>
+                    </div>
+                  )}
                 </li>
               );
             })}
