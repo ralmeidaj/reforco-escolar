@@ -37,7 +37,7 @@ export default function GuardianProgressPage() {
   const [loadingProgress, setLoadingProgress] = useState(false);
 
   useEffect(() => {
-    api.get<Student[]>('/guardian/students')
+    api.get<Student[]>('/guardian-students/my-students')
       .then(({ data }) => { setStudents(data); if (data.length > 0) setSelected(data[0].id); })
       .catch(() => {})
       .finally(() => setLoading(false));

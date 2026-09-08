@@ -33,7 +33,7 @@ export default function GuardianAttendancePage() {
 
   useEffect(() => {
     api
-      .get<Student[]>('/guardian/students')
+      .get<Student[]>('/guardian-students/my-students')
       .then(({ data }) => {
         setStudents(data);
         if (data.length > 0) setSelectedStudent(data[0].id);

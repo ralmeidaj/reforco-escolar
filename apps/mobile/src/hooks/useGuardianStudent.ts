@@ -9,7 +9,7 @@ export function useGuardianStudent() {
   const [loadingStudents, setLoadingStudents] = useState(true);
 
   useEffect(() => {
-    api.get<GuardianStudent[]>('/guardian/students')
+    api.get<GuardianStudent[]>('/guardian-students/my-students')
       .then(({ data }) => {
         setStudents(data);
         if (data.length > 0) setSelected(data[0]);

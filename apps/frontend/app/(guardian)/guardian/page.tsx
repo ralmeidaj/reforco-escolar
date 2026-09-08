@@ -34,7 +34,7 @@ export default function GuardianDashboard() {
   const [loadingReport, setLoadingReport] = useState(false);
 
   useEffect(() => {
-    api.get<Student[]>('/guardian/students')
+    api.get<Student[]>('/guardian-students/my-students')
       .then(({ data }) => { setStudents(data); if (data.length > 0) setSelected(data[0].id); })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -62,55 +62,63 @@ export default function GuardianDashboard() {
         <p className="mt-1 text-sm text-gray-500">Progresso e agenda do seu filho</p>
       </div>
 
-      {students.length > 1 && (
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <select value={selected} onChange={(e) => setSelected(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
-            {students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+      {students.length === 0 ? (
+        <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+          <p className="text-sm text-gray-400">Nenhum aluno vinculado à sua conta ainda. Fale com a escola para vincular seu filho.</p>
         </div>
-      )}
-
-      {loadingReport ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-24 animate-pulse rounded-2xl bg-gray-100" />)}
-        </div>
-      ) : report && (
+      ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {[
-              { label: 'Frequência',        value: `${report.attendanceRate}%`, color: report.attendanceRate >= 75 ? 'text-emerald-600' : 'text-amber-600' },
-              { label: 'Aulas realizadas',  value: report.presentCount,         color: 'text-brand-600' },
-              { label: 'Tarefas pendentes', value: report.pendingTasks,         color: report.pendingTasks > 0 ? 'text-amber-600' : 'text-gray-900' },
-              { label: 'Aulas restantes',   value: report.lessonsRemaining,     color: report.lessonsRemaining <= 2 ? 'text-red-500' : 'text-gray-900' },
-            ].map((c) => (
-              <div key={c.label} className="rounded-2xl bg-white p-4 shadow-sm">
-                <p className="text-xs font-medium text-gray-500">{c.label}</p>
-                <p className={`mt-1 text-2xl font-bold ${c.color}`}>{c.value}</p>
-              </div>
-            ))}
-          </div>
-
-          {report.lessonsRemaining <= 2 && (
-            <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4">
-              <p className="text-sm text-amber-700">
-                Atenção: seu filho tem apenas <strong>{report.lessonsRemaining}</strong> aula{report.lessonsRemaining !== 1 ? 's' : ''} restante{report.lessonsRemaining !== 1 ? 's' : ''}. Entre em contato para renovar o pacote.
-              </p>
+          {students.length > 1 && (
+            <div className="rounded-2xl bg-white p-4 shadow-sm">
+              <select value={selected} onChange={(e) => setSelected(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600">
+                {students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
             </div>
           )}
 
-          {report.progressBySubject.length > 0 && (
-            <div className="rounded-2xl bg-white p-5 shadow-sm space-y-3">
-              <h2 className="text-sm font-semibold text-gray-700">Nível por disciplina</h2>
-              {report.progressBySubject.map((p) => (
-                <div key={p.subjectName} className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700">{p.subjectName}</span>
-                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${LEVEL_COLORS[p.level] ?? 'bg-gray-100 text-gray-600'}`}>
-                    {LEVEL_LABELS[p.level] ?? p.level}
-                  </span>
-                </div>
-              ))}
+          {loadingReport ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {[...Array(4)].map((_, i) => <div key={i} className="h-24 animate-pulse rounded-2xl bg-gray-100" />)}
             </div>
+          ) : report && (
+            <>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                {[
+                  { label: 'Frequência',        value: `${report.attendanceRate}%`, color: report.attendanceRate >= 75 ? 'text-emerald-600' : 'text-amber-600' },
+                  { label: 'Aulas realizadas',  value: report.presentCount,         color: 'text-brand-600' },
+                  { label: 'Tarefas pendentes', value: report.pendingTasks,         color: report.pendingTasks > 0 ? 'text-amber-600' : 'text-gray-900' },
+                  { label: 'Aulas restantes',   value: report.lessonsRemaining,     color: report.lessonsRemaining <= 2 ? 'text-red-500' : 'text-gray-900' },
+                ].map((c) => (
+                  <div key={c.label} className="rounded-2xl bg-white p-4 shadow-sm">
+                    <p className="text-xs font-medium text-gray-500">{c.label}</p>
+                    <p className={`mt-1 text-2xl font-bold ${c.color}`}>{c.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {report.lessonsRemaining <= 2 && (
+                <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4">
+                  <p className="text-sm text-amber-700">
+                    Atenção: seu filho tem apenas <strong>{report.lessonsRemaining}</strong> aula{report.lessonsRemaining !== 1 ? 's' : ''} restante{report.lessonsRemaining !== 1 ? 's' : ''}. Entre em contato para renovar o pacote.
+                  </p>
+                </div>
+              )}
+
+              {report.progressBySubject.length > 0 && (
+                <div className="rounded-2xl bg-white p-5 shadow-sm space-y-3">
+                  <h2 className="text-sm font-semibold text-gray-700">Nível por disciplina</h2>
+                  {report.progressBySubject.map((p) => (
+                    <div key={p.subjectName} className="flex items-center justify-between">
+                      <span className="text-sm text-gray-700">{p.subjectName}</span>
+                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${LEVEL_COLORS[p.level] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {LEVEL_LABELS[p.level] ?? p.level}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </>
       )}
