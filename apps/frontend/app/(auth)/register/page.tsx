@@ -1,15 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import axios from 'axios';
+import Link from 'next/link';
+import { setTenantSlug } from '@/app/lib/api';
 import { Spinner } from '@/app/components/Spinner';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [form, setForm] = useState({ schoolName: '', slug: '', name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,12 +30,18 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await axios.post(`${BASE_URL}/tenants`, { name: form.schoolName, slug: form.slug });
-      await axios.post(
+      const { data } = await axios.post(
         `${BASE_URL}/auth/signup`,
         { name: form.name, email: form.email, password: form.password, role: 'tenant_admin' },
         { headers: { 'X-Tenant-Slug': form.slug }, withCredentials: true },
       );
-      router.push('/admin');
+      setTenantSlug(form.slug);
+      await fetch('/api/auth/callback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: data.accessToken, refreshToken: data.refreshToken }),
+      });
+      window.location.assign('/admin');
     } catch (err: any) {
       setError(err.response?.data?.message ?? 'Erro ao criar conta');
     } finally {
