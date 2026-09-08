@@ -32,20 +32,30 @@ const TAB_INVITE_ROLE: Record<Tab, string> = {
 };
 
 interface TeacherSubjectLink { id: string; subject: Subject }
+interface GuardianStudentLink { id: string; student: { id: string; name: string } }
 
 export default function UsersPage() {
   const [tab, setTab] = useState<Tab>('teachers');
   const [users, setUsers] = useState<User[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [allStudents, setAllStudents] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   // mapa teacherId → disciplinas já vinculadas
   const [linkedMap, setLinkedMap] = useState<Record<string, TeacherSubjectLink[]>>({});
+  // mapa guardianId → alunos já vinculados
+  const [guardianLinkedMap, setGuardianLinkedMap] = useState<Record<string, GuardianStudentLink[]>>({});
 
   // Modal de vínculo professor ↔ disciplina
   const [linkModal, setLinkModal] = useState<{ teacher: User } | null>(null);
   const [selectedSubject, setSelectedSubject] = useState('');
   const [linking, setLinking] = useState(false);
   const [linkError, setLinkError] = useState('');
+
+  // Modal de vínculo responsável ↔ aluno
+  const [guardianLinkModal, setGuardianLinkModal] = useState<{ guardian: User } | null>(null);
+  const [selectedStudentForLink, setSelectedStudentForLink] = useState('');
+  const [linkingStudent, setLinkingStudent] = useState(false);
+  const [linkStudentError, setLinkStudentError] = useState('');
 
   // Modal de convite
   const [inviteModal, setInviteModal] = useState(false);
@@ -79,17 +89,34 @@ export default function UsersPage() {
     setLinkedMap(Object.fromEntries(entries));
   }
 
+  async function loadGuardianStudents(guardians: User[]) {
+    const entries = await Promise.all(
+      guardians.map((g) =>
+        api.get<GuardianStudentLink[]>(`/guardian-students?guardianId=${g.id}`)
+          .then(({ data }) => [g.id, data] as const)
+          .catch(() => [g.id, []] as const),
+      ),
+    );
+    setGuardianLinkedMap(Object.fromEntries(entries));
+  }
+
   useEffect(() => {
     setLoading(true);
     setLinkedMap({});
+    setGuardianLinkedMap({});
     Promise.all([
       api.get<User[]>(`/auth/users?role=${TAB_ROLES[tab]}`),
       api.get<Subject[]>('/subjects'),
+      tab === 'guardians' ? api.get<User[]>('/auth/users?role=student') : Promise.resolve(null),
     ])
-      .then(([usersRes, subjectsRes]) => {
+      .then(([usersRes, subjectsRes, studentsRes]) => {
         setUsers(usersRes.data);
         setSubjects(subjectsRes.data);
         if (tab === 'teachers') loadTeacherSubjects(usersRes.data);
+        if (tab === 'guardians' && studentsRes) {
+          setAllStudents(studentsRes.data);
+          loadGuardianStudents(usersRes.data);
+        }
       })
       .finally(() => setLoading(false));
   }, [tab]);
@@ -128,6 +155,43 @@ export default function UsersPage() {
       setLinkedMap((prev) => ({
         ...prev,
         [teacherId]: (prev[teacherId] ?? []).filter((l) => l.id !== linkId),
+      }));
+    } catch {}
+  }
+
+  async function handleLinkStudent() {
+    if (!guardianLinkModal || !selectedStudentForLink) return;
+    setLinkStudentError('');
+    setLinkingStudent(true);
+    try {
+      const { data } = await api.post<{ id: string }>('/guardian-students', {
+        guardianId: guardianLinkModal.guardian.id,
+        studentId: selectedStudentForLink,
+      });
+      const newLink: GuardianStudentLink = {
+        id: data.id,
+        student: allStudents.find((s) => s.id === selectedStudentForLink)!,
+      };
+      setGuardianLinkedMap((prev) => ({
+        ...prev,
+        [guardianLinkModal.guardian.id]: [...(prev[guardianLinkModal.guardian.id] ?? []), newLink],
+      }));
+      setGuardianLinkModal(null);
+      setSelectedStudentForLink('');
+    } catch (err: any) {
+      const msg = err.response?.data?.message ?? 'Erro ao vincular aluno';
+      setLinkStudentError(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setLinkingStudent(false);
+    }
+  }
+
+  async function handleUnlinkStudent(guardianId: string, linkId: string) {
+    try {
+      await api.delete(`/guardian-students/${linkId}`);
+      setGuardianLinkedMap((prev) => ({
+        ...prev,
+        [guardianId]: (prev[guardianId] ?? []).filter((l) => l.id !== linkId),
       }));
     } catch {}
   }
@@ -299,6 +363,20 @@ export default function UsersPage() {
                         ))}
                       </div>
                     )}
+                    {tab === 'guardians' && (guardianLinkedMap[u.id] ?? []).length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {(guardianLinkedMap[u.id] ?? []).map((l) => (
+                          <span key={l.id} className="inline-flex items-center gap-1 rounded-full bg-brand-50 border border-brand-200 px-2 py-0.5 text-xs text-brand-700">
+                            {l.student.name}
+                            <button
+                              onClick={() => handleUnlinkStudent(u.id, l.id)}
+                              className="ml-0.5 text-brand-400 hover:text-red-500 font-bold leading-none"
+                              title="Remover vínculo"
+                            >×</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {tab === 'teachers' && (
@@ -307,6 +385,14 @@ export default function UsersPage() {
                         className="rounded-lg border border-brand-200 px-3 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50"
                       >
                         + Disciplina
+                      </button>
+                    )}
+                    {tab === 'guardians' && (
+                      <button
+                        onClick={() => { setGuardianLinkModal({ guardian: u }); setLinkStudentError(''); setSelectedStudentForLink(''); }}
+                        className="rounded-lg border border-brand-200 px-3 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50"
+                      >
+                        + Aluno
                       </button>
                     )}
                     <button
@@ -539,6 +625,55 @@ export default function UsersPage() {
                 className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {linking ? <><Spinner size="sm" className="text-white" /> Vinculando...</> : 'Vincular'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de vínculo responsável ↔ aluno */}
+      {guardianLinkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-base font-semibold text-gray-900">
+              Vincular aluno — {guardianLinkModal.guardian.name}
+            </h3>
+            {linkStudentError && (
+              <div className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{linkStudentError}</div>
+            )}
+            {(() => {
+              const alreadyLinked = (guardianLinkedMap[guardianLinkModal.guardian.id] ?? []).map((l) => l.student.id);
+              const available = allStudents.filter((s) => !alreadyLinked.includes(s.id));
+              return available.length === 0 ? (
+                <p className="mt-4 text-sm text-gray-500">
+                  {allStudents.length === 0 ? 'Nenhum aluno cadastrado ainda.' : 'Todos os alunos já estão vinculados a este responsável.'}
+                </p>
+              ) : (
+                <select
+                  value={selectedStudentForLink}
+                  onChange={(e) => setSelectedStudentForLink(e.target.value)}
+                  className="mt-4 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                >
+                  <option value="">Selecione um aluno</option>
+                  {available.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              );
+            })()}
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setGuardianLinkModal(null)}
+                className="rounded-lg px-4 py-2 text-sm text-gray-500 hover:bg-gray-100"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleLinkStudent}
+                disabled={!selectedStudentForLink || linkingStudent}
+                className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {linkingStudent ? <><Spinner size="sm" className="text-white" /> Vinculando...</> : 'Vincular'}
               </button>
             </div>
           </div>
