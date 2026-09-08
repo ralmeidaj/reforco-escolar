@@ -141,6 +141,15 @@ export class SubjectsController {
     return this.service.findStudentEnrollments(req.tenant.id, studentId);
   }
 
+  @Get('enrollments/count')
+  @Roles('tenant_admin')
+  @ApiOperation({ summary: 'Contar alunos com pelo menos uma matrícula' })
+  @ApiResponse({ status: 200, description: '{ count: number }' })
+  async countEnrolledStudents(@Req() req: any) {
+    const count = await this.service.countEnrolledStudents(req.tenant.id);
+    return { count };
+  }
+
   // ── Vínculo responsável ↔ aluno ──────────────────────────────────────────
 
   @Post('guardian-students')
@@ -168,5 +177,13 @@ export class SubjectsController {
   @ApiResponse({ status: 200 })
   findGuardianStudents(@Req() req: any, @Query('guardianId') guardianId: string) {
     return this.service.findGuardianStudents(req.tenant.id, guardianId);
+  }
+
+  @Get('guardian-students/my-students')
+  @Roles('guardian')
+  @ApiOperation({ summary: 'Listar alunos vinculados ao responsável autenticado' })
+  @ApiResponse({ status: 200 })
+  findMyStudents(@Req() req: any) {
+    return this.service.findGuardianStudents(req.tenant.id, req.user.sub);
   }
 }

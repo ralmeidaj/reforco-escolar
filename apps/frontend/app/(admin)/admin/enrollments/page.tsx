@@ -13,6 +13,7 @@ export default function EnrollmentsPage() {
   const [subjects, setSubjects]   = useState<Subject[]>([]);
   const [loading, setLoading]     = useState(true);
   const [search, setSearch]       = useState('');
+  const [enrolledTotal, setEnrolledTotal] = useState<number | null>(null);
 
   const [selected, setSelected]   = useState<Student | null>(null);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
@@ -26,9 +27,11 @@ export default function EnrollmentsPage() {
     Promise.all([
       api.get<Student[]>('/auth/users?role=student'),
       api.get<Subject[]>('/subjects'),
-    ]).then(([s, sub]) => {
+      api.get<{ count: number }>('/enrollments/count'),
+    ]).then(([s, sub, count]) => {
       setStudents(s.data);
       setSubjects(sub.data);
+      setEnrolledTotal(count.data.count);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -63,6 +66,8 @@ export default function EnrollmentsPage() {
         });
       }
       await reloadEnrollments(selected.id);
+      const { data } = await api.get<{ count: number }>('/enrollments/count');
+      setEnrolledTotal(data.count);
     } catch (err: any) {
       setToggleError(err.response?.data?.message ?? err.message ?? 'Erro ao atualizar matrícula');
     } finally {
@@ -87,9 +92,16 @@ export default function EnrollmentsPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Matrículas</h1>
-        <p className="mt-1 text-sm text-gray-500">Selecione um aluno e marque as disciplinas em que ele está matriculado</p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Matrículas</h1>
+          <p className="mt-1 text-sm text-gray-500">Selecione um aluno e marque as disciplinas em que ele está matriculado</p>
+        </div>
+        {enrolledTotal !== null && (
+          <span className="shrink-0 rounded-full bg-brand-100 px-4 py-1.5 text-sm font-semibold text-brand-700">
+            {enrolledTotal} {enrolledTotal === 1 ? 'aluno matriculado' : 'alunos matriculados'}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-col gap-4 lg:flex-row" style={{ minHeight: '70vh' }}>

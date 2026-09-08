@@ -109,6 +109,15 @@ export class SubjectsService {
     });
   }
 
+  async countEnrolledStudents(tenantId: string): Promise<number> {
+    const result = await this.enrollmentsRepo
+      .createQueryBuilder('e')
+      .select('COUNT(DISTINCT e.student_id)', 'count')
+      .where('e.tenant_id = :tenantId', { tenantId })
+      .getRawOne<{ count: string }>();
+    return Number(result?.count ?? 0);
+  }
+
   // ── Guardian ↔ Student ────────────────────────────────────────────────────
 
   async linkGuardianStudent(tenantId: string, dto: CreateGuardianStudentDto) {

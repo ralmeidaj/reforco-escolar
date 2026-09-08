@@ -13,6 +13,7 @@ const makeRepo = () => ({
   create: jest.fn((dto: any) => dto),
   save: jest.fn(),
   remove: jest.fn(),
+  createQueryBuilder: jest.fn(),
 });
 
 describe('SubjectsService', () => {
@@ -173,6 +174,35 @@ describe('SubjectsService', () => {
     it('lança NotFoundException se matrícula não existe', async () => {
       enrollmentsRepo.findOne.mockResolvedValue(null);
       await expect(service.unenroll(TENANT, 'nao-existe')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('countEnrolledStudents', () => {
+    it('retorna a quantidade de alunos distintos com matrícula', async () => {
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ count: '5' }),
+      };
+      enrollmentsRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.countEnrolledStudents(TENANT);
+
+      expect(result).toBe(5);
+      expect(qb.where).toHaveBeenCalledWith('e.tenant_id = :tenantId', { tenantId: TENANT });
+    });
+
+    it('retorna 0 quando não há matrículas', async () => {
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ count: '0' }),
+      };
+      enrollmentsRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.countEnrolledStudents(TENANT);
+
+      expect(result).toBe(0);
     });
   });
 
