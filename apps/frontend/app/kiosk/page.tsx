@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { LOGO_DATA_URI } from '@/app/lib/logo';
 
 interface Assignment {
   id: string;
@@ -76,9 +77,10 @@ type Step = 'setup' | 'rooms' | 'search' | 'confirm' | 'success' | 'error' | 'ex
 export default function KioskPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<Step>(() =>
-    getTenantSlug() ? 'rooms' : 'setup'
-  );
+  // Começa sempre em 'setup' (mesmo valor no server e no 1º render do client,
+  // já que getTenantSlug() depende de window) para não causar hydration mismatch;
+  // o efeito abaixo decide a tela certa assim que roda no navegador.
+  const [step, setStep] = useState<Step>('setup');
   const [tenantInput, setTenantInput] = useState('');
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [query, setQuery] = useState('');
@@ -107,6 +109,10 @@ export default function KioskPage() {
       const data = await kioskFetch<Room[]>('/kiosk/rooms');
       setRooms(data);
     } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (getTenantSlug()) setStep('rooms');
   }, []);
 
   useEffect(() => {
@@ -227,11 +233,11 @@ export default function KioskPage() {
 
   if (step === 'setup') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-sky-700 text-white flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-[#123B2C] via-[#1E7A4C] to-[#6FA83C] text-white flex items-center justify-center p-6">
         <div className="w-full max-w-sm text-center">
-          <img src="/logo.png" alt="Reforços Escolares" className="h-16 w-auto object-contain mx-auto mb-6" />
+          <img src={LOGO_DATA_URI} alt="Clube de Estudos" className="h-16 w-auto object-contain mx-auto mb-6" />
           <h1 className="text-3xl font-black mb-2">Kiosk</h1>
-          <p className="text-blue-200 mb-8 text-sm">Digite o identificador da sua escola para continuar</p>
+          <p className="text-white/80 mb-8 text-sm">Digite o identificador da sua escola para continuar</p>
           <form onSubmit={(e) => {
             e.preventDefault();
             const slug = tenantInput.trim();
@@ -247,12 +253,12 @@ export default function KioskPage() {
               value={tenantInput}
               onChange={(e) => setTenantInput(e.target.value)}
               placeholder="Ex: escola-silva"
-              className="w-full rounded-2xl bg-white/10 border border-white/20 px-5 py-4 text-white text-lg placeholder-white/30 outline-none focus:border-blue-300"
+              className="w-full rounded-2xl bg-white/10 border border-white/20 px-5 py-4 text-white text-lg placeholder-white/30 outline-none focus:border-brand-200"
             />
             <button
               type="submit"
               disabled={!tenantInput.trim()}
-              className="w-full rounded-2xl bg-blue-500 py-4 text-base font-bold hover:bg-blue-400 disabled:opacity-40"
+              className="w-full rounded-2xl bg-brand-600 py-4 text-base font-bold hover:bg-brand-500 disabled:opacity-40"
             >
               Entrar
             </button>
@@ -263,15 +269,15 @@ export default function KioskPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-sky-700 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-[#123B2C] via-[#1E7A4C] to-[#6FA83C] text-white">
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-5 border-b border-white/10">
         <div className="flex items-center gap-6">
-          <img src="/logo.png" alt="Reforços Escolares" className="h-10 w-auto object-contain" />
+          <img src={LOGO_DATA_URI} alt="Clube de Estudos" className="h-10 w-auto object-contain" />
           <div className="w-px h-8 bg-white/20" />
           <div>
             <h1 className="text-3xl font-black tracking-tight">Escolha sua sala</h1>
-            <p className="mt-0.5 text-blue-200 text-sm">Toque em uma sala para registrar sua chegada</p>
+            <p className="mt-0.5 text-white/80 text-sm">Toque em uma sala para registrar sua chegada</p>
           </div>
         </div>
         <div className="flex items-center gap-6">
@@ -281,7 +287,7 @@ export default function KioskPage() {
           >
             Sair do reforço
           </button>
-          <div className="text-right text-sm text-blue-200">
+          <div className="text-right text-sm text-white/80">
             <Clock />
           </div>
         </div>
@@ -296,7 +302,7 @@ export default function KioskPage() {
             ))}
           </div>
         ) : rooms.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-32 text-blue-200">
+          <div className="flex flex-col items-center justify-center py-32 text-white/80">
             <span className="text-6xl">🏫</span>
             <p className="mt-4 text-xl">Nenhuma sala disponível agora</p>
           </div>
@@ -318,7 +324,7 @@ export default function KioskPage() {
                 )}
                 <h2 className="text-2xl font-bold">{room.name}</h2>
                 {room.assignments?.length > 0 && (
-                  <p className="mt-1 text-sm text-blue-200">
+                  <p className="mt-1 text-sm text-white/80">
                     {room.assignments.map((a) =>
                       [a.subject?.name, `Prof. ${a.teacher.name}`].filter(Boolean).join(' · ')
                     ).join(' | ')}
@@ -328,16 +334,16 @@ export default function KioskPage() {
                   <span className={`text-5xl font-black ${room.isFull ? 'text-red-400' : 'text-white'}`}>
                     {room.available}
                   </span>
-                  <span className="text-blue-200 text-lg">/ {room.capacity}</span>
+                  <span className="text-white/80 text-lg">/ {room.capacity}</span>
                 </div>
-                <p className="mt-0.5 text-sm text-blue-200">
+                <p className="mt-0.5 text-sm text-white/80">
                   {room.isFull ? 'sem vagas' : `vaga${room.available !== 1 ? 's' : ''} disponível${room.available !== 1 ? 'is' : ''}`}
                 </p>
                 <div className="mt-4">
                   <OccupancyBar pct={pct(room)} isFull={room.isFull} />
                 </div>
                 {!room.isFull && (
-                  <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-blue-200 group-hover:text-white transition-colors">
+                  <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-white/80 group-hover:text-white transition-colors">
                     <span>Entrar nessa sala</span>
                     <span>→</span>
                   </div>
@@ -352,26 +358,26 @@ export default function KioskPage() {
       {step === 'search' && selectedRoom && (
         <Modal>
           <div className="text-center mb-6">
-            <p className="text-blue-300 text-sm font-medium">Entrando em</p>
+            <p className="text-white/70 text-sm font-medium">Entrando em</p>
             <h2 className="text-2xl font-black mt-0.5">{selectedRoom.name}</h2>
           </div>
 
-          <label className="block text-sm font-semibold text-blue-200 mb-2">Digite seu nome</label>
+          <label className="block text-sm font-semibold text-white/80 mb-2">Digite seu nome</label>
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             placeholder="Ex: João Silva"
-            className="w-full rounded-2xl bg-white/10 border border-white/20 px-5 py-4 text-white text-lg placeholder-white/30 outline-none focus:border-blue-300 focus:bg-white/15"
+            className="w-full rounded-2xl bg-white/10 border border-white/20 px-5 py-4 text-white text-lg placeholder-white/30 outline-none focus:border-brand-200 focus:bg-white/15"
           />
 
           <div className="mt-3 min-h-[120px]">
             {searching && (
-              <p className="text-center text-blue-300 text-sm mt-6">Buscando...</p>
+              <p className="text-center text-white/70 text-sm mt-6">Buscando...</p>
             )}
             {!searching && query.length >= 2 && students.length === 0 && (
-              <p className="text-center text-blue-300 text-sm mt-6">Nenhum aluno encontrado</p>
+              <p className="text-center text-white/70 text-sm mt-6">Nenhum aluno encontrado</p>
             )}
             {students.length > 0 && (
               <ul className="space-y-2 mt-2">
@@ -381,7 +387,7 @@ export default function KioskPage() {
                       onClick={() => setSelectedStudent(st)}
                       className={`w-full rounded-xl px-5 py-3 text-left text-lg font-medium transition-all
                         ${selectedStudent?.id === st.id
-                          ? 'bg-blue-500 text-white'
+                          ? 'bg-brand-600 text-white'
                           : 'bg-white/10 text-white hover:bg-white/20'
                         }`}
                     >
@@ -400,7 +406,7 @@ export default function KioskPage() {
             <button
               onClick={handleCheckin}
               disabled={!selectedStudent || checkingIn}
-              className="flex-1 rounded-2xl bg-blue-500 py-4 text-base font-bold hover:bg-blue-400 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 rounded-2xl bg-brand-600 py-4 text-base font-bold hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {checkingIn ? 'Registrando...' : 'Confirmar entrada'}
             </button>
@@ -412,26 +418,26 @@ export default function KioskPage() {
       {step === 'exit-search' && (
         <Modal>
           <div className="text-center mb-6">
-            <p className="text-blue-300 text-sm font-medium">Registrar saída</p>
+            <p className="text-white/70 text-sm font-medium">Registrar saída</p>
             <h2 className="text-2xl font-black mt-0.5">Sair do reforço</h2>
           </div>
 
-          <label className="block text-sm font-semibold text-blue-200 mb-2">Digite seu nome</label>
+          <label className="block text-sm font-semibold text-white/80 mb-2">Digite seu nome</label>
           <input
             ref={exitInputRef}
             type="text"
             value={exitQuery}
             onChange={(e) => handleExitQueryChange(e.target.value)}
             placeholder="Ex: João Silva"
-            className="w-full rounded-2xl bg-white/10 border border-white/20 px-5 py-4 text-white text-lg placeholder-white/30 outline-none focus:border-blue-300 focus:bg-white/15"
+            className="w-full rounded-2xl bg-white/10 border border-white/20 px-5 py-4 text-white text-lg placeholder-white/30 outline-none focus:border-brand-200 focus:bg-white/15"
           />
 
           <div className="mt-3 min-h-[120px]">
             {exitSearching && (
-              <p className="text-center text-blue-300 text-sm mt-6">Buscando...</p>
+              <p className="text-center text-white/70 text-sm mt-6">Buscando...</p>
             )}
             {!exitSearching && exitQuery.length >= 2 && exitResults.length === 0 && (
-              <p className="text-center text-blue-300 text-sm mt-6">Nenhum aluno com entrada registrada encontrado</p>
+              <p className="text-center text-white/70 text-sm mt-6">Nenhum aluno com entrada registrada encontrado</p>
             )}
             {exitResults.length > 0 && (
               <ul className="space-y-2 mt-2">
@@ -441,12 +447,12 @@ export default function KioskPage() {
                       onClick={() => setSelectedExit(st)}
                       className={`w-full rounded-xl px-5 py-3 text-left transition-all
                         ${selectedExit?.studentId === st.studentId
-                          ? 'bg-blue-500 text-white'
+                          ? 'bg-brand-600 text-white'
                           : 'bg-white/10 text-white hover:bg-white/20'
                         }`}
                     >
                       <span className="block text-lg font-medium">{st.studentName}</span>
-                      <span className="block text-sm text-blue-200">{st.roomName}</span>
+                      <span className="block text-sm text-white/80">{st.roomName}</span>
                     </button>
                   </li>
                 ))}
@@ -461,7 +467,7 @@ export default function KioskPage() {
             <button
               onClick={handleCheckout}
               disabled={!selectedExit || checkingOut}
-              className="flex-1 rounded-2xl bg-blue-500 py-4 text-base font-bold hover:bg-blue-400 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex-1 rounded-2xl bg-brand-600 py-4 text-base font-bold hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {checkingOut ? 'Registrando...' : 'Confirmar saída'}
             </button>
@@ -477,12 +483,12 @@ export default function KioskPage() {
             <h2 className="text-3xl font-black">
               {successKind === 'checkout' ? `Até logo, ${successName}!` : `Bem-vindo, ${successName}!`}
             </h2>
-            <p className="mt-2 text-blue-200">
+            <p className="mt-2 text-white/80">
               {successKind === 'checkout'
                 ? <>Saída registrada{selectedExit ? <> de <strong>{selectedExit.roomName}</strong></> : null}</>
                 : <>Entrada registrada em <strong>{selectedRoom?.name}</strong></>}
             </p>
-            <p className="mt-4 text-sm text-blue-300">Fechando em alguns segundos...</p>
+            <p className="mt-4 text-sm text-white/70">Fechando em alguns segundos...</p>
           </div>
         </Modal>
       )}
@@ -493,7 +499,7 @@ export default function KioskPage() {
           <div className="text-center py-4">
             <div className="text-7xl mb-4">⚠️</div>
             <h2 className="text-2xl font-black">Ops!</h2>
-            <p className="mt-2 text-blue-200">{errorMsg}</p>
+            <p className="mt-2 text-white/80">{errorMsg}</p>
             <button onClick={() => setStep('rooms')} className="mt-6 rounded-2xl bg-white/10 px-8 py-3 font-semibold hover:bg-white/20">
               Fechar
             </button>
@@ -507,7 +513,7 @@ export default function KioskPage() {
 function Modal({ children, center }: { children: React.ReactNode; center?: boolean }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-6">
-      <div className={`w-full max-w-md rounded-3xl bg-blue-900 border border-white/10 shadow-2xl p-8 ${center ? 'text-center' : ''}`}>
+      <div className={`w-full max-w-md rounded-3xl bg-[#123B2C] border border-white/10 shadow-2xl p-8 ${center ? 'text-center' : ''}`}>
         {children}
       </div>
     </div>
@@ -537,7 +543,7 @@ function Clock() {
     <div className="text-right">
       <div className="text-3xl font-black">{time}</div>
       {shift && (
-        <div className="mt-0.5 text-sm font-semibold text-blue-200">
+        <div className="mt-0.5 text-sm font-semibold text-white/80">
           Turno da {shift.label} · {shift.range}
         </div>
       )}
