@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
+import { IsNull } from 'typeorm';
 import { RoomsService } from './rooms.service';
 import { Room } from './room.entity';
 import { RoomAssignment } from './room-assignment.entity';
@@ -14,10 +15,13 @@ import { Attendance } from '../attendance/attendance.entity';
 const makeQb = () => ({
   select: jest.fn().mockReturnThis(),
   addSelect: jest.fn().mockReturnThis(),
+  innerJoin: jest.fn().mockReturnThis(),
   leftJoin: jest.fn().mockReturnThis(),
   where: jest.fn().mockReturnThis(),
   andWhere: jest.fn().mockReturnThis(),
   groupBy: jest.fn().mockReturnThis(),
+  orderBy: jest.fn().mockReturnThis(),
+  limit: jest.fn().mockReturnThis(),
   getRawMany: jest.fn().mockResolvedValue([]),
 });
 
@@ -26,6 +30,7 @@ const makeRepo = () => ({
   findOne: jest.fn(),
   create: jest.fn((dto: any) => dto),
   save: jest.fn(),
+  update: jest.fn(),
   remove: jest.fn(),
   createQueryBuilder: jest.fn().mockReturnValue(makeQb()),
 });
@@ -33,18 +38,20 @@ const makeRepo = () => ({
 describe('RoomsService', () => {
   let service: RoomsService;
   let roomsRepo: ReturnType<typeof makeRepo>;
+  let checkinsRepo: ReturnType<typeof makeRepo>;
 
   const TENANT = 'tenant-1';
 
   beforeEach(async () => {
     roomsRepo = makeRepo();
+    checkinsRepo = makeRepo();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RoomsService,
         { provide: getRepositoryToken(Room),                useValue: roomsRepo },
         { provide: getRepositoryToken(RoomAssignment),      useValue: makeRepo() },
-        { provide: getRepositoryToken(RoomCheckin),         useValue: makeRepo() },
+        { provide: getRepositoryToken(RoomCheckin),         useValue: checkinsRepo },
         { provide: getRepositoryToken(RoomSchedule),        useValue: makeRepo() },
         { provide: getRepositoryToken(RoomScheduleTeacher), useValue: makeRepo() },
         { provide: getRepositoryToken(User),                useValue: makeRepo() },
@@ -130,6 +137,42 @@ describe('RoomsService', () => {
       // createQueryBuilder já mockado para retornar getRawMany: []
       const result = await service.getOccupancy(TENANT);
       expect(result[0].currentOccupancy).toBe(0);
+    });
+  });
+
+  describe('kioskSearchCheckedIn', () => {
+    it('retorna [] sem consultar o banco se a busca tiver menos de 2 caracteres', async () => {
+      const result = await service.kioskSearchCheckedIn(TENANT, 'j');
+      expect(result).toEqual([]);
+      expect(checkinsRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('retorna alunos com check-in ativo mapeados com nome e sala', async () => {
+      const qb = checkinsRepo.createQueryBuilder();
+      (qb.getRawMany as jest.Mock).mockResolvedValue([
+        { student_id: 'aluno-1', student_name: 'João Silva', room_name: 'Sala 01' },
+      ]);
+      checkinsRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.kioskSearchCheckedIn(TENANT, 'joão');
+
+      expect(result).toEqual([
+        { studentId: 'aluno-1', studentName: 'João Silva', roomName: 'Sala 01' },
+      ]);
+      expect(qb.andWhere).toHaveBeenCalledWith('c.checkout_at IS NULL');
+    });
+  });
+
+  describe('checkout', () => {
+    it('encerra o check-in ativo do aluno', async () => {
+      checkinsRepo.update.mockResolvedValue({ affected: 1 });
+
+      await service.checkout(TENANT, 'aluno-1');
+
+      expect(checkinsRepo.update).toHaveBeenCalledWith(
+        { tenantId: TENANT, studentId: 'aluno-1', checkoutAt: IsNull() },
+        { checkoutAt: expect.any(Date) },
+      );
     });
   });
 });

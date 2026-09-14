@@ -59,6 +59,9 @@ export class User {
   @Column({ name: 'payment_day', nullable: true, type: 'smallint' })
   paymentDay: number | null;
 
+  @Column({ name: 'deleted_at', nullable: true, type: 'timestamptz' })
+  deletedAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

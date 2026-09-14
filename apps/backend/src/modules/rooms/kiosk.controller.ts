@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Req, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { IsUUID } from 'class-validator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -7,6 +7,10 @@ import { RoomsService } from './rooms.service';
 class KioskCheckinDto {
   @IsUUID() studentId: string;
   @IsUUID() roomId: string;
+}
+
+class KioskCheckoutDto {
+  @IsUUID() studentId: string;
 }
 
 @ApiTags('Kiosk')
@@ -36,5 +40,21 @@ export class KioskController {
   @ApiResponse({ status: 400, description: 'Sala sem vagas' })
   checkin(@Req() req: any, @Body() dto: KioskCheckinDto) {
     return this.roomsService.checkin(req.tenant.id, dto.studentId, dto.roomId);
+  }
+
+  @Get('checked-in')
+  @ApiOperation({ summary: 'Busca alunos com check-in ativo por nome, para saída (público — kiosk)' })
+  @ApiQuery({ name: 'q', required: true })
+  @ApiResponse({ status: 200 })
+  searchCheckedIn(@Req() req: any, @Query('q') q: string) {
+    return this.roomsService.kioskSearchCheckedIn(req.tenant.id, q ?? '');
+  }
+
+  @Post('checkout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Registra saída do aluno da sala (público — kiosk)' })
+  @ApiResponse({ status: 204 })
+  checkout(@Req() req: any, @Body() dto: KioskCheckoutDto) {
+    return this.roomsService.checkout(req.tenant.id, dto.studentId);
   }
 }

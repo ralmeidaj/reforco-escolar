@@ -192,4 +192,77 @@ describe('Auth + Tenant E2E', () => {
         .expect(204);
     });
   });
+
+  describe('DELETE /auth/users/:id', () => {
+    async function createStudent(adminToken: string) {
+      const { body } = await request(app.getHttpServer())
+        .post('/auth/users')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .set('X-Tenant-Slug', SLUG)
+        .send({ name: 'Aluno E2E', email: 'aluno@e2e.com', password: 'senha1234', role: 'student' })
+        .expect(201);
+      return body;
+    }
+
+    it('exclui usuário (soft delete): some da listagem e não consegue mais logar', async () => {
+      const { body: signup } = await createTenantAndAdmin();
+      const student = await createStudent(signup.accessToken);
+
+      await request(app.getHttpServer())
+        .delete(`/auth/users/${student.id}`)
+        .set('Authorization', `Bearer ${signup.accessToken}`)
+        .set('X-Tenant-Slug', SLUG)
+        .expect(204);
+
+      const { body: users } = await request(app.getHttpServer())
+        .get('/auth/users?role=student')
+        .set('Authorization', `Bearer ${signup.accessToken}`)
+        .set('X-Tenant-Slug', SLUG)
+        .expect(200);
+      expect(users.find((u: any) => u.id === student.id)).toBeUndefined();
+
+      await request(app.getHttpServer())
+        .post('/auth/login')
+        .set('X-Tenant-Slug', SLUG)
+        .send({ email: 'aluno@e2e.com', password: 'senha1234' })
+        .expect(401);
+    });
+
+    it('admin não pode excluir a própria conta', async () => {
+      const { body: signup } = await createTenantAndAdmin();
+
+      await request(app.getHttpServer())
+        .delete(`/auth/users/${signup.user.id}`)
+        .set('Authorization', `Bearer ${signup.accessToken}`)
+        .set('X-Tenant-Slug', SLUG)
+        .expect(400);
+    });
+
+    it('usuário sem role tenant_admin não pode excluir', async () => {
+      const { body: signup } = await createTenantAndAdmin();
+      await createStudent(signup.accessToken);
+
+      const { body: studentLogin } = await request(app.getHttpServer())
+        .post('/auth/login')
+        .set('X-Tenant-Slug', SLUG)
+        .send({ email: 'aluno@e2e.com', password: 'senha1234' })
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .delete(`/auth/users/${signup.user.id}`)
+        .set('Authorization', `Bearer ${studentLogin.accessToken}`)
+        .set('X-Tenant-Slug', SLUG)
+        .expect(403);
+    });
+
+    it('excluir usuário inexistente retorna 401', async () => {
+      const { body: signup } = await createTenantAndAdmin();
+
+      await request(app.getHttpServer())
+        .delete('/auth/users/00000000-0000-0000-0000-000000000000')
+        .set('Authorization', `Bearer ${signup.accessToken}`)
+        .set('X-Tenant-Slug', SLUG)
+        .expect(401);
+    });
+  });
 });

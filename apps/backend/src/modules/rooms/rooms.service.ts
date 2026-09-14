@@ -418,6 +418,27 @@ export class RoomsService {
     });
   }
 
+  async kioskSearchCheckedIn(tenantId: string, q: string) {
+    if (!q || q.length < 2) return [];
+    const rows = await this.checkinsRepo
+      .createQueryBuilder('c')
+      .innerJoin('users', 'u', 'u.id = c.student_id AND u.tenant_id = c.tenant_id')
+      .innerJoin('rooms', 'r', 'r.id = c.room_id AND r.tenant_id = c.tenant_id')
+      .select(['u.id AS student_id', 'u.name AS student_name', 'r.name AS room_name'])
+      .where('c.tenant_id = :tenantId', { tenantId })
+      .andWhere('c.checkout_at IS NULL')
+      .andWhere('u.name ILIKE :q', { q: `%${q}%` })
+      .orderBy('u.name', 'ASC')
+      .limit(10)
+      .getRawMany();
+
+    return rows.map((row) => ({
+      studentId: row.student_id,
+      studentName: row.student_name,
+      roomName: row.room_name,
+    }));
+  }
+
   // ── Grade de horários por sala ──────────────────────────────────────────────
 
   getSchedules(tenantId: string, roomId: string) {

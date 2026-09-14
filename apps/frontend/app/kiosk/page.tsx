@@ -23,6 +23,12 @@ interface Student {
   name: string;
 }
 
+interface CheckedInStudent {
+  studentId: string;
+  studentName: string;
+  roomName: string;
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 const KIOSK_SLUG_KEY = 'kiosk_tenant_slug';
@@ -65,7 +71,7 @@ function OccupancyBar({ pct, isFull }: { pct: number; isFull: boolean }) {
   );
 }
 
-type Step = 'setup' | 'rooms' | 'search' | 'confirm' | 'success' | 'error';
+type Step = 'setup' | 'rooms' | 'search' | 'confirm' | 'success' | 'error' | 'exit-search';
 
 export default function KioskPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -82,9 +88,18 @@ export default function KioskPage() {
   const [checkingIn, setCheckingIn] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successName, setSuccessName] = useState('');
+  const [successKind, setSuccessKind] = useState<'checkin' | 'checkout'>('checkin');
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const [exitQuery, setExitQuery] = useState('');
+  const [exitResults, setExitResults] = useState<CheckedInStudent[]>([]);
+  const [exitSearching, setExitSearching] = useState(false);
+  const [selectedExit, setSelectedExit] = useState<CheckedInStudent | null>(null);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const exitDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exitInputRef = useRef<HTMLInputElement>(null);
 
   const loadRooms = useCallback(async () => {
     if (!getTenantSlug()) return;
@@ -112,6 +127,9 @@ export default function KioskPage() {
     if (step === 'search') {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
+    if (step === 'exit-search') {
+      setTimeout(() => exitInputRef.current?.focus(), 100);
+    }
   }, [step]);
 
   function openSearch(room: Room) {
@@ -120,6 +138,46 @@ export default function KioskPage() {
     setStudents([]);
     setSelectedStudent(null);
     setStep('search');
+  }
+
+  function openExitSearch() {
+    setExitQuery('');
+    setExitResults([]);
+    setSelectedExit(null);
+    setStep('exit-search');
+  }
+
+  function handleExitQueryChange(val: string) {
+    setExitQuery(val);
+    setSelectedExit(null);
+    if (exitDebounceRef.current) clearTimeout(exitDebounceRef.current);
+    if (val.length < 2) { setExitResults([]); return; }
+    exitDebounceRef.current = setTimeout(async () => {
+      setExitSearching(true);
+      try {
+        const data = await kioskFetch<CheckedInStudent[]>(`/kiosk/checked-in?q=${encodeURIComponent(val)}`);
+        setExitResults(data);
+      } catch {}
+      setExitSearching(false);
+    }, 350);
+  }
+
+  async function handleCheckout() {
+    if (!selectedExit) return;
+    setCheckingOut(true);
+    try {
+      await kioskFetch('/kiosk/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ studentId: selectedExit.studentId }),
+      });
+      setSuccessName(selectedExit.studentName.split(' ')[0]);
+      setSuccessKind('checkout');
+      setStep('success');
+    } catch (e: any) {
+      setErrorMsg(e.message ?? 'Não foi possível registrar a saída');
+      setStep('error');
+    }
+    setCheckingOut(false);
   }
 
   function handleQueryChange(val: string) {
@@ -146,6 +204,7 @@ export default function KioskPage() {
         body: JSON.stringify({ studentId: selectedStudent.id, roomId: selectedRoom.id }),
       });
       setSuccessName(selectedStudent.name.split(' ')[0]);
+      setSuccessKind('checkin');
       setStep('success');
     } catch (e: any) {
       setErrorMsg(e.message ?? 'Não foi possível registrar a entrada');
@@ -159,6 +218,9 @@ export default function KioskPage() {
     setQuery('');
     setStudents([]);
     setSelectedStudent(null);
+    setExitQuery('');
+    setExitResults([]);
+    setSelectedExit(null);
   }
 
   const pct = (r: Room) => r.capacity ? Math.min(100, Math.round((r.currentOccupancy / r.capacity) * 100)) : 0;
@@ -212,8 +274,16 @@ export default function KioskPage() {
             <p className="mt-0.5 text-blue-200 text-sm">Toque em uma sala para registrar sua chegada</p>
           </div>
         </div>
-        <div className="text-right text-sm text-blue-200">
-          <Clock />
+        <div className="flex items-center gap-6">
+          <button
+            onClick={openExitSearch}
+            className="rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-semibold hover:bg-white/20"
+          >
+            Sair do reforço
+          </button>
+          <div className="text-right text-sm text-blue-200">
+            <Clock />
+          </div>
         </div>
       </header>
 
@@ -338,13 +408,80 @@ export default function KioskPage() {
         </Modal>
       )}
 
+      {/* Modal: busca de aluno para saída */}
+      {step === 'exit-search' && (
+        <Modal>
+          <div className="text-center mb-6">
+            <p className="text-blue-300 text-sm font-medium">Registrar saída</p>
+            <h2 className="text-2xl font-black mt-0.5">Sair do reforço</h2>
+          </div>
+
+          <label className="block text-sm font-semibold text-blue-200 mb-2">Digite seu nome</label>
+          <input
+            ref={exitInputRef}
+            type="text"
+            value={exitQuery}
+            onChange={(e) => handleExitQueryChange(e.target.value)}
+            placeholder="Ex: João Silva"
+            className="w-full rounded-2xl bg-white/10 border border-white/20 px-5 py-4 text-white text-lg placeholder-white/30 outline-none focus:border-blue-300 focus:bg-white/15"
+          />
+
+          <div className="mt-3 min-h-[120px]">
+            {exitSearching && (
+              <p className="text-center text-blue-300 text-sm mt-6">Buscando...</p>
+            )}
+            {!exitSearching && exitQuery.length >= 2 && exitResults.length === 0 && (
+              <p className="text-center text-blue-300 text-sm mt-6">Nenhum aluno com entrada registrada encontrado</p>
+            )}
+            {exitResults.length > 0 && (
+              <ul className="space-y-2 mt-2">
+                {exitResults.map((st) => (
+                  <li key={st.studentId}>
+                    <button
+                      onClick={() => setSelectedExit(st)}
+                      className={`w-full rounded-xl px-5 py-3 text-left transition-all
+                        ${selectedExit?.studentId === st.studentId
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white/10 text-white hover:bg-white/20'
+                        }`}
+                    >
+                      <span className="block text-lg font-medium">{st.studentName}</span>
+                      <span className="block text-sm text-blue-200">{st.roomName}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="mt-6 flex gap-3">
+            <button onClick={cancel} className="flex-1 rounded-2xl bg-white/10 py-4 text-base font-semibold hover:bg-white/20">
+              Cancelar
+            </button>
+            <button
+              onClick={handleCheckout}
+              disabled={!selectedExit || checkingOut}
+              className="flex-1 rounded-2xl bg-blue-500 py-4 text-base font-bold hover:bg-blue-400 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {checkingOut ? 'Registrando...' : 'Confirmar saída'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {/* Sucesso */}
       {step === 'success' && (
         <Modal center>
           <div className="text-center py-4">
-            <div className="text-7xl mb-4">✅</div>
-            <h2 className="text-3xl font-black">Bem-vindo, {successName}!</h2>
-            <p className="mt-2 text-blue-200">Entrada registrada em <strong>{selectedRoom?.name}</strong></p>
+            <div className="text-7xl mb-4">{successKind === 'checkout' ? '👋' : '✅'}</div>
+            <h2 className="text-3xl font-black">
+              {successKind === 'checkout' ? `Até logo, ${successName}!` : `Bem-vindo, ${successName}!`}
+            </h2>
+            <p className="mt-2 text-blue-200">
+              {successKind === 'checkout'
+                ? <>Saída registrada{selectedExit ? <> de <strong>{selectedExit.roomName}</strong></> : null}</>
+                : <>Entrada registrada em <strong>{selectedRoom?.name}</strong></>}
+            </p>
             <p className="mt-4 text-sm text-blue-300">Fechando em alguns segundos...</p>
           </div>
         </Modal>

@@ -6,7 +6,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -100,7 +100,7 @@ export class AuthService {
   }
 
   async login(tenantId: string, dto: LoginDto) {
-    const user = await this.usersRepo.findOne({ where: { tenantId, email: dto.email } });
+    const user = await this.usersRepo.findOne({ where: { tenantId, email: dto.email, deletedAt: IsNull() } });
     if (!user) throw new UnauthorizedException('Credenciais inválidas');
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
@@ -110,7 +110,7 @@ export class AuthService {
   }
 
   async loginMobile(dto: LoginDto) {
-    const users = await this.usersRepo.find({ where: { email: dto.email } });
+    const users = await this.usersRepo.find({ where: { email: dto.email, deletedAt: IsNull() } });
 
     const valid: User[] = [];
     for (const user of users) {
@@ -265,7 +265,7 @@ export class AuthService {
   }
 
   listUsers(tenantId: string, role?: string) {
-    const where: any = { tenantId };
+    const where: any = { tenantId, deletedAt: IsNull() };
     if (role) where.role = role;
     return this.usersRepo.find({
       where,
@@ -275,6 +275,19 @@ export class AuthService {
         birthDate: true, address: true, notes: true, paymentDay: true,
       },
     });
+  }
+
+  async deleteUser(tenantId: string, userId: string, requestingUserId: string) {
+    if (userId === requestingUserId) {
+      throw new BadRequestException('Você não pode excluir sua própria conta');
+    }
+
+    const user = await this.usersRepo.findOne({ where: { tenantId, id: userId, deletedAt: IsNull() } });
+    if (!user) throw new UnauthorizedException();
+
+    user.deletedAt = new Date();
+    await this.usersRepo.save(user);
+    await this.refreshTokensRepo.update({ userId, revoked: false }, { revoked: true });
   }
 
   async getProfile(userId: string) {

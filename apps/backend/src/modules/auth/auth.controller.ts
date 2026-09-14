@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Patch,
+  Delete,
   Body,
   Param,
   Req,
@@ -205,6 +206,19 @@ export class AuthController {
   @ApiResponse({ status: 200 })
   listUsers(@Req() req: any, @Query('role') role?: string) {
     return this.authService.listUsers(req.tenant.id, role);
+  }
+
+  @ApiBearerAuth()
+  @Roles('tenant_admin')
+  @Delete('users/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Excluir usuário do tenant (soft delete)' })
+  @ApiParam({ name: 'id', type: 'string' })
+  @ApiResponse({ status: 204, description: 'Usuário excluído' })
+  @ApiResponse({ status: 400, description: 'Tentativa de excluir a própria conta' })
+  @ApiResponse({ status: 401, description: 'Usuário não encontrado' })
+  async deleteUser(@Req() req: any, @Param('id') id: string) {
+    await this.authService.deleteUser(req.tenant.id, id, req.user.sub);
   }
 
   @ApiBearerAuth()

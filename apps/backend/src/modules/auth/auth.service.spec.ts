@@ -8,6 +8,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { IsNull } from 'typeorm';
 import { AuthService } from './auth.service';
 import { User } from './user.entity';
 import { RefreshToken } from './refresh-token.entity';
@@ -323,6 +324,67 @@ describe('AuthService', () => {
     it('lança UnauthorizedException se usuário não existe no tenant', async () => {
       mockUsersRepo.findOne.mockResolvedValue(null);
       await expect(service.updateUserProfile('tenant-1', 'ghost', { name: 'X' })).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('deleteUser', () => {
+    it('marca deletedAt e revoga refresh tokens ativos', async () => {
+      const user = { id: 'user-2', tenantId: 'tenant-1', name: 'Aluno', deletedAt: null };
+      mockUsersRepo.findOne.mockResolvedValue(user);
+      mockUsersRepo.save.mockImplementation((u: any) => Promise.resolve(u));
+      mockRefreshTokensRepo.update.mockResolvedValue({ affected: 1 });
+
+      await service.deleteUser('tenant-1', 'user-2', 'admin-1');
+
+      expect(mockUsersRepo.findOne).toHaveBeenCalledWith({
+        where: { tenantId: 'tenant-1', id: 'user-2', deletedAt: IsNull() },
+      });
+      expect(mockUsersRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ deletedAt: expect.any(Date) }),
+      );
+      expect(mockRefreshTokensRepo.update).toHaveBeenCalledWith(
+        { userId: 'user-2', revoked: false },
+        { revoked: true },
+      );
+    });
+
+    it('lança BadRequestException ao tentar excluir a própria conta', async () => {
+      await expect(service.deleteUser('tenant-1', 'admin-1', 'admin-1'))
+        .rejects.toThrow(BadRequestException);
+      expect(mockUsersRepo.findOne).not.toHaveBeenCalled();
+    });
+
+    it('lança UnauthorizedException se usuário não existe (ou já foi excluído)', async () => {
+      mockUsersRepo.findOne.mockResolvedValue(null);
+      await expect(service.deleteUser('tenant-1', 'ghost', 'admin-1'))
+        .rejects.toThrow(UnauthorizedException);
+      expect(mockUsersRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('exclusão de usuário reflete no login e na listagem', () => {
+    it('login busca somente usuários com deletedAt nulo', async () => {
+      const hash = await bcrypt.hash('senha123', 10);
+      mockUsersRepo.findOne.mockResolvedValue({
+        id: 'user-1', email: 'joao@test.com', passwordHash: hash, role: 'student', tenantId: 'tenant-1', name: 'João',
+      });
+      mockRefreshTokensRepo.save.mockResolvedValue({});
+
+      await service.login('tenant-1', { email: 'joao@test.com', password: 'senha123' });
+
+      expect(mockUsersRepo.findOne).toHaveBeenCalledWith({
+        where: { tenantId: 'tenant-1', email: 'joao@test.com', deletedAt: IsNull() },
+      });
+    });
+
+    it('listUsers busca somente usuários com deletedAt nulo', async () => {
+      await service.listUsers('tenant-1', 'student');
+
+      expect(mockUsersRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { tenantId: 'tenant-1', role: 'student', deletedAt: IsNull() },
+        }),
+      );
     });
   });
 });

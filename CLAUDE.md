@@ -364,6 +364,8 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 | `0018_student_grades_unidade` | adiciona coluna `unidade` (bimestre/etapa) em student_grades |
 | `0019_activity_corrections` | activity_corrections (corretor de atividade por foto via IA, com histórico por aluno) |
 | `0020_tenant_openai_key` | adiciona `openai_api_key_encrypted` (nullable) em `tenants` |
+| `0021_user_profile_fields` | adiciona `birth_date`, `address`, `notes`, `payment_day` em `users` |
+| `0022_user_soft_delete` | adiciona `deleted_at` (nullable) em `users` — soft delete |
 
 ## Specs do produto
 
@@ -381,6 +383,7 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 - Perfil básico por role (foto, dados pessoais)
 - Rate limiting em todos os endpoints de auth
 - **Chave OpenAI própria por tenant:** `tenant_admin` configura a própria chave da OpenAI em `/admin/settings` (`GET/PUT/DELETE /tenants/me/openai-key`), armazenada criptografada (AES-256-GCM) em `tenants.openai_api_key_encrypted`. A chave nunca é retornada em texto claro — só `{hasKey, keyPreview}` (últimos 4 caracteres). **Se o tenant não configurar a própria chave, todas as features de IA (Spec 9) caem de volta pra `OPENAI_API_KEY` global do `.env`** — retrocompatível. Resolução centralizada em `OpenAiClientResolver` (`src/common/openai/`, `@Global()`), injetado por `AiService`/`TasksService` em vez de cada um instanciar o client OpenAI no próprio construtor
+- **Exclusão de usuário (soft delete):** `DELETE /auth/users/:id` (`tenant_admin`) marca `users.deleted_at` em vez de apagar a linha — preserva matrículas, pagamentos, mensagens e progresso pedagógico já vinculados ao usuário. Usuários com `deleted_at` preenchido somem de `listUsers` e não conseguem mais logar (`login`/`loginMobile` filtram `deletedAt: IsNull()`); refresh tokens ativos são revogados no momento da exclusão. Admin não pode excluir a própria conta (`400`). Sem rota de restauração hoje — reverter exige update manual no banco
 
 ---
 
@@ -417,6 +420,7 @@ O `eas.json` já resolve o ambiente pelo nome do profile (`preview`/`production`
 - **Grade de horários semanal por sala:** tabela `room_schedules` (dia da semana × turno → disciplina + professores); configurada via `GET/POST/DELETE /rooms/:id/schedules`; professores exibidos no formulário são filtrados pela disciplina selecionada (`GET /teacher-subjects?subjectId=`)
 - **Kiosk com filtro por turno:** exibe somente salas com horário cadastrado para o turno atual (Manhã 06-12h, Tarde 12-18h, Noite 18-24h); sem horário configurado para o turno, kiosk exibe "Nenhuma sala disponível"; resolve tenant via `?tenant=slug` ou localStorage
 - Admin visualiza ocupação em tempo real por sala ("Alunos no reforço agora"); kiosk permite check-in pelo aluno sem autenticação via busca por nome
+- **Saída pelo kiosk (self-service):** botão "Sair do reforço" no kiosk (`KioskController`, `@Public()`) busca alunos com check-in ativo por nome (`GET /kiosk/checked-in?q=`, mostra nome + sala) e confirma a saída (`POST /kiosk/checkout`, reaproveita `RoomsService.checkout`). Distinto do botão "Encerrar" do admin em `/admin/rooms` (`DELETE /rooms/checkins/:checkinId`, autenticado) — o kiosk é o fluxo do próprio aluno na escola, sem login. Por decisão de privacidade, o kiosk **não** expõe a lista nominal de quem está em cada sala (isso continua restrito ao admin/professor autenticado) — só contadores agregados de ocupação
 
 **Geração automática de link do Google Meet (conta única da plataforma):**
 - `GoogleCalendarService` (`src/common/google-calendar/`, `@Global()`) cria, via Google Calendar API, um evento com `conferenceData` (Meet) numa única conta Google da plataforma — não é por tenant (diferente da chave OpenAI do Spec 1). Nenhum e-mail de convite é enviado a professor/aluno (evento criado sem `attendees`), só o link é reaproveitado
