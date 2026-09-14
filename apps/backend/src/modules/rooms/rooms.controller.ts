@@ -21,6 +21,7 @@ import { RoomsService } from './rooms.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { CreateRoomAssignmentDto } from './dto/create-room-assignment.dto';
+import { AdminCheckinDto } from './dto/admin-checkin.dto';
 import { ReassignStudentDto } from './dto/reassign-student.dto';
 import { UpsertRoomScheduleDto } from './dto/upsert-room-schedule.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -111,6 +112,17 @@ export class RoomsController {
   @ApiResponse({ status: 404, description: 'Sala não encontrada' })
   checkin(@Req() req: any, @Param('id') id: string) {
     return this.roomsService.checkin(req.tenant.id, req.user.sub, id);
+  }
+
+  @Post(':id/admin-checkin')
+  @Roles('tenant_admin')
+  @ApiOperation({ summary: 'Admin adiciona um aluno manualmente a uma sala' })
+  @ApiParam({ name: 'id', type: 'string', description: 'ID da sala' })
+  @ApiResponse({ status: 201, description: 'Check-in registrado' })
+  @ApiResponse({ status: 400, description: 'Sala sem vagas' })
+  @ApiResponse({ status: 404, description: 'Sala não encontrada' })
+  adminCheckin(@Req() req: any, @Param('id') id: string, @Body() dto: AdminCheckinDto) {
+    return this.roomsService.checkin(req.tenant.id, dto.studentId, id);
   }
 
   @Patch(':id')

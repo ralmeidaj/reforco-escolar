@@ -32,6 +32,7 @@ interface ActiveCheckin {
   teacherName: string | null;
 }
 
+interface Student { id: string; name: string }
 interface Teacher { id: string; name: string }
 interface Subject { id: string; name: string }
 interface ScheduleTeacher { id: string; teacher: { id: string; name: string } }
@@ -51,11 +52,19 @@ export default function RoomsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [checkins, setCheckins] = useState<ActiveCheckin[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ name: '', capacity: 10 });
   const [error, setError] = useState('');
+
+  // adicionar aluno na sala
+  const [addModal, setAddModal] = useState<Room | null>(null);
+  const [addQuery, setAddQuery] = useState('');
+  const [selectedAddStudent, setSelectedAddStudent] = useState<Student | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState('');
 
   // edição de sala
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -90,6 +99,7 @@ export default function RoomsPage() {
       loadCheckins(),
       api.get<Teacher[]>('/auth/users?role=teacher').then(({ data }) => setTeachers(data)),
       api.get<Subject[]>('/subjects').then(({ data }) => setSubjects(data)),
+      api.get<Student[]>('/auth/users?role=student').then(({ data }) => setStudents(data)),
     ]).finally(() => setLoading(false));
 
     const interval = setInterval(() => { loadRooms(); loadCheckins(); }, 30_000);
@@ -142,6 +152,28 @@ export default function RoomsPage() {
       setReassigning(null);
       setNewAssignmentId('');
     } catch {} finally { setReassignSaving(false); }
+  }
+
+  function openAddModal(room: Room) {
+    setAddModal(room);
+    setAddQuery('');
+    setSelectedAddStudent(null);
+    setAddError('');
+  }
+
+  async function handleAddStudent() {
+    if (!addModal || !selectedAddStudent) return;
+    setAddError('');
+    setAdding(true);
+    try {
+      await api.post(`/rooms/${addModal.id}/admin-checkin`, { studentId: selectedAddStudent.id });
+      await Promise.all([loadRooms(), loadCheckins()]);
+      setAddModal(null);
+    } catch (err: any) {
+      setAddError(err.response?.data?.message ?? 'Erro ao adicionar aluno à sala');
+    } finally {
+      setAdding(false);
+    }
   }
 
   async function openScheduleModal(room: Room) {
@@ -364,6 +396,14 @@ export default function RoomsPage() {
                         </div>
                       </div>
                       <button
+                        onClick={() => openAddModal(r)}
+                        disabled={occ >= r.capacity}
+                        className="rounded-lg border border-brand-200 px-3 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={occ >= r.capacity ? 'Sala sem vagas' : undefined}
+                      >
+                        + Adicionar aluno
+                      </button>
+                      <button
                         onClick={() => openScheduleModal(r)}
                         className="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
                       >
@@ -540,6 +580,79 @@ export default function RoomsPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de adicionar aluno na sala */}
+      {addModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="mb-1 text-base font-semibold text-gray-900">Adicionar aluno</h3>
+            <p className="mb-4 text-sm text-gray-500">Sala: <strong>{addModal.name}</strong></p>
+
+            {addError && (
+              <div className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{addError}</div>
+            )}
+
+            <input
+              autoFocus
+              disabled={adding}
+              value={addQuery}
+              onChange={(e) => { setAddQuery(e.target.value); setSelectedAddStudent(null); }}
+              placeholder="Buscar aluno pelo nome..."
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 disabled:opacity-60"
+            />
+
+            <div className="mt-3 max-h-56 overflow-y-auto">
+              {(() => {
+                const filtered = students.filter((s) =>
+                  s.name.toLowerCase().includes(addQuery.trim().toLowerCase()),
+                );
+                if (students.length === 0) {
+                  return <p className="py-4 text-center text-sm text-gray-400">Nenhum aluno cadastrado ainda.</p>;
+                }
+                if (filtered.length === 0) {
+                  return <p className="py-4 text-center text-sm text-gray-400">Nenhum aluno encontrado.</p>;
+                }
+                return (
+                  <ul className="space-y-1">
+                    {filtered.map((s) => (
+                      <li key={s.id}>
+                        <button
+                          onClick={() => setSelectedAddStudent(s)}
+                          className={cn(
+                            'w-full rounded-lg px-3 py-2 text-left text-sm transition-colors',
+                            selectedAddStudent?.id === s.id
+                              ? 'bg-brand-600 text-white'
+                              : 'text-gray-700 hover:bg-gray-50',
+                          )}
+                        >
+                          {s.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                );
+              })()}
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setAddModal(null)}
+                disabled={adding}
+                className="rounded-lg px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAddStudent}
+                disabled={!selectedAddStudent || adding}
+                className="flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {adding ? <><Spinner size="sm" className="text-white" /> Adicionando...</> : 'Adicionar'}
+              </button>
             </div>
           </div>
         </div>

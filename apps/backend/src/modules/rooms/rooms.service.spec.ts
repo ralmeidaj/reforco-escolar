@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { IsNull } from 'typeorm';
 import { RoomsService } from './rooms.service';
 import { Room } from './room.entity';
@@ -31,6 +31,7 @@ const makeRepo = () => ({
   create: jest.fn((dto: any) => dto),
   save: jest.fn(),
   update: jest.fn(),
+  count: jest.fn(),
   remove: jest.fn(),
   createQueryBuilder: jest.fn().mockReturnValue(makeQb()),
 });
@@ -137,6 +138,32 @@ describe('RoomsService', () => {
       // createQueryBuilder já mockado para retornar getRawMany: []
       const result = await service.getOccupancy(TENANT);
       expect(result[0].currentOccupancy).toBe(0);
+    });
+  });
+
+  describe('checkin', () => {
+    it('lança BadRequestException se a sala estiver sem vagas', async () => {
+      roomsRepo.findOne.mockResolvedValue({ id: 'r1', tenantId: TENANT, capacity: 1, assignments: [] });
+      checkinsRepo.update.mockResolvedValue({ affected: 0 });
+      checkinsRepo.count.mockResolvedValue(1);
+
+      await expect(service.checkin(TENANT, 'aluno-1', 'r1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('faz auto-checkout de sala anterior e cria o check-in quando há vaga', async () => {
+      roomsRepo.findOne.mockResolvedValue({ id: 'r1', tenantId: TENANT, name: 'Sala 01', capacity: 5, assignments: [] });
+      checkinsRepo.update.mockResolvedValue({ affected: 1 });
+      checkinsRepo.count.mockResolvedValue(0);
+      checkinsRepo.save.mockResolvedValue({ id: 'checkin-1', tenantId: TENANT, roomId: 'r1', studentId: 'aluno-1' });
+
+      const result = await service.checkin(TENANT, 'aluno-1', 'r1');
+
+      expect(checkinsRepo.update).toHaveBeenCalledWith(
+        { tenantId: TENANT, studentId: 'aluno-1', checkoutAt: IsNull() },
+        { checkoutAt: expect.any(Date) },
+      );
+      expect(checkinsRepo.save).toHaveBeenCalledTimes(1);
+      expect(result.room).toEqual({ id: 'r1', name: 'Sala 01', capacity: 5 });
     });
   });
 
