@@ -45,6 +45,11 @@ export class RoomsService {
     });
   }
 
+  async findMine(tenantId: string, teacherId: string) {
+    const rooms = await this.findAll(tenantId);
+    return rooms.filter((r) => r.assignments.some((a) => a.teacherId === teacherId));
+  }
+
   async findOne(tenantId: string, id: string) {
     const room = await this.roomsRepo.findOne({
       where: { tenantId, id },

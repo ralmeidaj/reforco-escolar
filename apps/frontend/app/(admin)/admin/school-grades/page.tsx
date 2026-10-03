@@ -6,7 +6,19 @@ import { cn } from '@/app/lib/utils';
 
 interface Student    { id: string; name: string; email: string }
 interface Grade      { id: string; subject: string; unidade: string; value: number; createdAt: string }
-interface Enrollment { id: string; subject: { id: string; name: string } }
+interface Subject    { id: string; name: string }
+interface Enrollment { id: string; subject: Subject }
+
+const UNIDADES: { value: string; label: string }[] = [
+  { value: '1', label: '1ª Unidade' },
+  { value: '2', label: '2ª Unidade' },
+  { value: '3', label: '3ª Unidade' },
+  { value: '4', label: '4ª Unidade' },
+];
+
+function unidadeLabel(value: string) {
+  return UNIDADES.find((u) => u.value === value)?.label ?? value;
+}
 
 export default function SchoolGradesPage() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -16,9 +28,9 @@ export default function SchoolGradesPage() {
   const [selected, setSelected] = useState<Student | null>(null);
   const [grades, setGrades]     = useState<Grade[]>([]);
   const [loadingGrades, setLoadingGrades] = useState(false);
-  const [enrolledSubjects, setEnrolledSubjects] = useState<string[]>([]);
+  const [enrolledSubjects, setEnrolledSubjects] = useState<Subject[]>([]);
 
-  const [subject, setSubject] = useState('');
+  const [subjectId, setSubjectId] = useState('');
   const [unidade, setUnidade] = useState('');
   const [value, setValue]     = useState('');
   const [saving, setSaving]   = useState(false);
@@ -46,28 +58,29 @@ export default function SchoolGradesPage() {
   function selectStudent(student: Student) {
     setSelected(student);
     setError('');
+    setSubjectId(''); setUnidade(''); setValue('');
     loadGrades(student.id);
     setMobileView('grades');
     api.get<Enrollment[]>(`/enrollments?studentId=${student.id}`)
-      .then(({ data }) => setEnrolledSubjects(data.map((e) => e.subject.name)))
+      .then(({ data }) => setEnrolledSubjects(data.map((e) => e.subject)))
       .catch(() => setEnrolledSubjects([]));
   }
 
   async function addGrade() {
-    if (!selected || !subject.trim() || !unidade.trim() || !value.trim()) {
+    if (!selected || !subjectId || !unidade || !value.trim()) {
       setError('Preencha disciplina, unidade e nota');
       return;
     }
     const num = Number(value.replace(',', '.'));
-    if (Number.isNaN(num)) {
-      setError('Nota inválida');
+    if (Number.isNaN(num) || num < 0 || num > 10) {
+      setError('Nota inválida — deve ser entre 0 e 10');
       return;
     }
     setSaving(true);
     setError('');
     try {
-      await api.post('/progress/grades', { studentId: selected.id, subject: subject.trim(), unidade: unidade.trim(), value: num });
-      setSubject(''); setUnidade(''); setValue('');
+      await api.post('/progress/grades', { studentId: selected.id, subjectId, unidade, value: num });
+      setSubjectId(''); setUnidade(''); setValue('');
       await loadGrades(selected.id);
     } catch (err: any) {
       setError(err.response?.data?.message ?? 'Erro ao registrar nota');
@@ -169,27 +182,26 @@ export default function SchoolGradesPage() {
               <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div className="flex-1">
                   <label className="mb-1 block text-xs font-medium text-gray-500">Disciplina</label>
-                  <input
-                    type="text"
-                    list="enrolled-subjects"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    placeholder="Ex: Matemática"
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400"
-                  />
-                  <datalist id="enrolled-subjects">
-                    {enrolledSubjects.map((s) => <option key={s} value={s} />)}
-                  </datalist>
+                  <select
+                    value={subjectId}
+                    onChange={(e) => setSubjectId(e.target.value)}
+                    disabled={enrolledSubjects.length === 0}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400 disabled:opacity-60"
+                  >
+                    <option value="">Selecione...</option>
+                    {enrolledSubjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
                 </div>
-                <div className="w-full sm:w-32">
+                <div className="w-full sm:w-40">
                   <label className="mb-1 block text-xs font-medium text-gray-500">Unidade</label>
-                  <input
-                    type="text"
+                  <select
                     value={unidade}
                     onChange={(e) => setUnidade(e.target.value)}
-                    placeholder="Ex: 1ª Unidade"
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-400"
-                  />
+                  >
+                    <option value="">Selecione...</option>
+                    {UNIDADES.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                  </select>
                 </div>
                 <div className="w-full sm:w-24">
                   <label className="mb-1 block text-xs font-medium text-gray-500">Nota</label>
@@ -211,6 +223,12 @@ export default function SchoolGradesPage() {
                 </button>
               </div>
 
+              {enrolledSubjects.length === 0 && (
+                <div className="mb-4 rounded-lg bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
+                  Aluno não está matriculado em nenhuma disciplina — não é possível registrar notas.
+                </div>
+              )}
+
               {error && (
                 <div className="mb-4 rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">
                   {error}
@@ -228,11 +246,18 @@ export default function SchoolGradesPage() {
                   {grades.map((g) => (
                     <div key={g.id} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{g.subject} <span className="text-gray-400 font-normal">· {g.unidade}</span></p>
+                        <p className="text-sm font-medium text-gray-900">{g.subject} <span className="text-gray-400 font-normal">· {unidadeLabel(g.unidade)}</span></p>
                         <p className="text-xs text-gray-400">{new Date(g.createdAt).toLocaleDateString('pt-BR')}</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="rounded-full bg-brand-100 px-3 py-1 text-sm font-semibold text-brand-700">{g.value}</span>
+                        <span
+                          className={cn(
+                            'rounded-full px-3 py-1 text-sm font-semibold',
+                            g.value >= 6 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700',
+                          )}
+                        >
+                          {g.value}
+                        </span>
                         <button
                           onClick={() => removeGrade(g.id)}
                           disabled={deletingId === g.id}

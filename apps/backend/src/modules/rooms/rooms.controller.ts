@@ -48,6 +48,14 @@ export class RoomsController {
     return this.roomsService.getOccupancy(req.tenant.id);
   }
 
+  @Get('mine')
+  @Roles('teacher')
+  @ApiOperation({ summary: 'Salas em que o professor autenticado está alocado' })
+  @ApiResponse({ status: 200 })
+  findMine(@Req() req: any) {
+    return this.roomsService.findMine(req.tenant.id, req.user.sub);
+  }
+
   // ── Rotas de check-in de aluno (rotas estáticas antes de :id) ───────────────
 
   @Get('checkins/active')

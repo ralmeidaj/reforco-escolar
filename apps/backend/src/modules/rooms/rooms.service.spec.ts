@@ -78,6 +78,27 @@ describe('RoomsService', () => {
     });
   });
 
+  describe('findMine', () => {
+    it('retorna so as salas em que o professor tem assignment', async () => {
+      const rooms = [
+        { id: 'r1', name: 'Sala 01', assignments: [{ teacherId: 'teacher-1' }] },
+        { id: 'r2', name: 'Sala 02', assignments: [{ teacherId: 'teacher-2' }] },
+        { id: 'r3', name: 'Sala 03', assignments: [{ teacherId: 'teacher-1' }, { teacherId: 'teacher-2' }] },
+      ];
+      roomsRepo.find.mockResolvedValue(rooms);
+
+      const result = await service.findMine(TENANT, 'teacher-1');
+
+      expect(result.map((r: any) => r.id)).toEqual(['r1', 'r3']);
+    });
+
+    it('retorna vazio quando o professor nao tem sala alocada', async () => {
+      roomsRepo.find.mockResolvedValue([{ id: 'r1', assignments: [{ teacherId: 'teacher-2' }] }]);
+      const result = await service.findMine(TENANT, 'teacher-1');
+      expect(result).toEqual([]);
+    });
+  });
+
   describe('findOne', () => {
     it('retorna a sala se encontrada', async () => {
       const room = { id: 'r1', name: 'Sala 01', tenantId: TENANT };

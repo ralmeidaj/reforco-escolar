@@ -52,7 +52,7 @@ export default function TeacherAttendancePage() {
 
   useEffect(() => {
     Promise.all([
-      api.get<Session[]>(`/sessions?date=${today}`).then(({ data }) => setSessions(data)),
+      api.get<Session[]>(`/sessions?from=${today}T00:00:00&to=${today}T23:59:59`).then(({ data }) => setSessions(data)),
       api.get<ActiveCheckin[]>('/rooms/checkins/active').then(({ data }) => setActiveCheckins(data)).catch(() => {}),
     ]).finally(() => setLoading(false));
 

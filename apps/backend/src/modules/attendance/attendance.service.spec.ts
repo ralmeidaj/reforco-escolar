@@ -11,6 +11,7 @@ const makeRepo = () => ({
   save: jest.fn(),
   create: jest.fn((dto) => dto),
   count: jest.fn(),
+  createQueryBuilder: jest.fn(),
 });
 
 describe('AttendanceService', () => {
@@ -129,6 +130,65 @@ describe('AttendanceService', () => {
 
       expect(noteRepo.create).not.toHaveBeenCalled();
       expect(result.content).toBe('Updated');
+    });
+  });
+
+  describe('getAttendanceReport', () => {
+    it('monta a query com periodo e filtra por sala quando informada', async () => {
+      const qb = {
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([{ id: 'att-1' }]),
+      };
+      attendanceRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.getAttendanceReport(tenantId, '2026-09-01', '2026-09-30', 'room-1');
+
+      expect(qb.where).toHaveBeenCalledWith('a.tenant_id = :tenantId', { tenantId });
+      expect(qb.andWhere).toHaveBeenCalledWith('session.scheduled_at BETWEEN :from AND :to', {
+        from: '2026-09-01', to: '2026-09-30',
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith('session.room_id = :roomId', { roomId: 'room-1' });
+      expect(result).toHaveLength(1);
+    });
+
+    it('nao filtra por sala quando roomId nao e informado', async () => {
+      const qb = {
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      };
+      attendanceRepo.createQueryBuilder.mockReturnValue(qb);
+
+      await service.getAttendanceReport(tenantId, '2026-09-01', '2026-09-30');
+
+      expect(qb.andWhere).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('findNotesByStudent', () => {
+    it('busca notas do aluno ordenadas pela data da sessao', async () => {
+      const qb = {
+        innerJoinAndSelect: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([{ id: 'note-1' }]),
+      };
+      noteRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.findNotesByStudent(tenantId, studentId);
+
+      expect(qb.andWhere).toHaveBeenCalledWith('session.student_id = :studentId', { studentId });
+      expect(qb.orderBy).toHaveBeenCalledWith('session.scheduled_at', 'DESC');
+      expect(result).toHaveLength(1);
     });
   });
 

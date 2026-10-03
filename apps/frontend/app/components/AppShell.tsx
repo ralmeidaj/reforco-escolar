@@ -12,6 +12,7 @@ import {
   LayoutDashboard, Users, BookOpen, GraduationCap, ClipboardList,
   Calendar, DoorOpen, Monitor, CheckSquare, Wallet, BarChart2, Settings,
   FileText, MessageCircle, TrendingUp, Brain, UserPlus, Award, Megaphone,
+  ClipboardCheck, History,
 } from 'lucide-react';
 
 interface Me { name: string; email: string; role: string }
@@ -26,11 +27,13 @@ const adminNav: NavItem[] = [
   { href: '/admin/groups',       label: 'Turmas',        icon: GraduationCap },
   { href: '/admin/enrollments',  label: 'Matrículas',    icon: UserPlus },
   { href: '/admin/school-grades', label: 'Notas da escola', icon: Award },
+  { href: '/admin/student-agenda', label: 'Agenda do Aluno', icon: History },
   { section: true,               label: 'Operacional' },
   { href: '/admin/schedule',     label: 'Agendamento',   icon: Calendar },
   { href: '/admin/rooms',        label: 'Salas',         icon: DoorOpen },
   { href: '/kiosk',              label: 'Kiosk',         icon: Monitor, external: true },
   { href: '/admin/attendance',   label: 'Presenças',     icon: CheckSquare },
+  { href: '/admin/attendance-report', label: 'Relatório de Presença', icon: ClipboardCheck },
   { href: '/admin/finance',      label: 'Financeiro',    icon: Wallet },
   { href: '/admin/reports',      label: 'Relatórios',    icon: BarChart2 },
   { href: '/admin/announcements', label: 'Avisos',       icon: Megaphone },
@@ -39,9 +42,11 @@ const adminNav: NavItem[] = [
 
 const teacherNav: NavItem[] = [
   { href: '/teacher',              label: 'Dashboard',     icon: LayoutDashboard },
+  { href: '/teacher/rooms',        label: 'Minha Sala',    icon: DoorOpen },
   { href: '/teacher/attendance',   label: 'Presença',      icon: CheckSquare },
   { href: '/teacher/tasks',        label: 'Tarefas',       icon: ClipboardList },
   { href: '/teacher/notes',        label: 'Notas de aula', icon: FileText },
+  { href: '/teacher/student-agenda', label: 'Agenda do Aluno', icon: History },
   { href: '/teacher/school-grades', label: 'Notas da escola', icon: Award },
   { href: '/teacher/students',     label: 'Alunos',        icon: Users },
   { href: '/teacher/chat',         label: 'Chat',          icon: MessageCircle },

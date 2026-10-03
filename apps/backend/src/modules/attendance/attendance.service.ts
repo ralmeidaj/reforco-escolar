@@ -70,8 +70,35 @@ export class AttendanceService {
     return this.noteRepo.find({ where: { tenantId, sessionId } });
   }
 
+  async findNotesByStudent(tenantId: string, studentId: string): Promise<SessionNote[]> {
+    return this.noteRepo.createQueryBuilder('n')
+      .innerJoinAndSelect('n.session', 'session')
+      .leftJoinAndSelect('session.subject', 'subject')
+      .innerJoinAndSelect('n.teacher', 'teacher')
+      .where('n.tenant_id = :tenantId', { tenantId })
+      .andWhere('session.student_id = :studentId', { studentId })
+      .orderBy('session.scheduled_at', 'DESC')
+      .getMany();
+  }
+
   async getAbsenceCount(tenantId: string, studentId: string): Promise<number> {
     return this.attendanceRepo.count({ where: { tenantId, studentId, status: 'ausente' as any } });
+  }
+
+  async getAttendanceReport(
+    tenantId: string, from: string, to: string, roomId?: string,
+  ): Promise<Attendance[]> {
+    const qb = this.attendanceRepo.createQueryBuilder('a')
+      .innerJoinAndSelect('a.session', 'session')
+      .innerJoinAndSelect('a.student', 'student')
+      .leftJoinAndSelect('session.subject', 'subject')
+      .leftJoinAndSelect('session.teacher', 'teacher')
+      .leftJoinAndSelect('session.room', 'room')
+      .where('a.tenant_id = :tenantId', { tenantId })
+      .andWhere('session.scheduled_at BETWEEN :from AND :to', { from, to });
+    if (roomId) qb.andWhere('session.room_id = :roomId', { roomId });
+    qb.orderBy('session.scheduled_at', 'ASC');
+    return qb.getMany();
   }
 
   async getConsecutiveAbsences(tenantId: string, studentId: string): Promise<number> {

@@ -3,6 +3,7 @@ import {
 } from 'typeorm';
 import { Tenant } from '../tenants/tenant.entity';
 import { User } from '../auth/user.entity';
+import { Subject } from '../subjects/subject.entity';
 
 @Entity('student_grades')
 export class StudentGrade {
@@ -13,7 +14,10 @@ export class StudentGrade {
   @ManyToOne(() => User, { onDelete: 'CASCADE' }) @JoinColumn({ name: 'student_id' }) student: User;
   @Column({ name: 'recorded_by' }) recordedBy: string;
   @ManyToOne(() => User, { onDelete: 'CASCADE' }) @JoinColumn({ name: 'recorded_by' }) recorder: User;
+  // nome da disciplina no momento do registro (mantido mesmo se a disciplina for renomeada/excluída depois)
   @Column() subject: string;
+  @Column({ name: 'subject_id', nullable: true, type: 'uuid' }) subjectId: string | null;
+  @ManyToOne(() => Subject, { onDelete: 'SET NULL' }) @JoinColumn({ name: 'subject_id' }) subjectEntity: Subject | null;
   @Column() unidade: string;
   @Column({ type: 'numeric', precision: 4, scale: 2, transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) } })
   value: number;

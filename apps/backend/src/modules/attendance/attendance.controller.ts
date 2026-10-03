@@ -47,12 +47,37 @@ export class AttendanceController {
     return this.attendanceService.updateStatus(req.tenant.id, id, dto);
   }
 
+  @Get('attendances/report')
+  @Roles('tenant_admin')
+  @ApiOperation({ summary: 'Relatório de presença por período e sala' })
+  @ApiQuery({ name: 'from', required: true, description: 'ISO 8601 start' })
+  @ApiQuery({ name: 'to', required: true, description: 'ISO 8601 end' })
+  @ApiQuery({ name: 'roomId', required: false })
+  @ApiResponse({ status: 200, description: 'Lista de presenças no período, com sessão/sala/disciplina/professor' })
+  getReport(
+    @Request() req: any,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('roomId') roomId?: string,
+  ) {
+    return this.attendanceService.getAttendanceReport(req.tenant.id, from, to, roomId);
+  }
+
   @Post('session-notes')
   @Roles('teacher', 'tenant_admin')
   @ApiOperation({ summary: 'Add or update a session note by the teacher' })
   @ApiResponse({ status: 201, description: 'Note saved' })
   addNote(@Request() req: any, @Body() dto: CreateSessionNoteDto) {
     return this.attendanceService.addSessionNote(req.tenant.id, req.user.sub, dto);
+  }
+
+  @Get('session-notes/student/:studentId')
+  @Roles('teacher', 'tenant_admin')
+  @ApiOperation({ summary: 'Agenda do aluno — histórico de notas de aula por data, de todos os professores' })
+  @ApiParam({ name: 'studentId', type: 'string' })
+  @ApiResponse({ status: 200, description: 'Lista de notas ordenada por data da sessão (mais recente primeiro)' })
+  findNotesByStudent(@Request() req: any, @Param('studentId') studentId: string) {
+    return this.attendanceService.findNotesByStudent(req.tenant.id, studentId);
   }
 
   @Get('session-notes/:sessionId')

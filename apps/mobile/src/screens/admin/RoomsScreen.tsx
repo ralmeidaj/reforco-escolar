@@ -54,7 +54,7 @@ export function RoomsScreen() {
         api.get('/subjects'),
         api.get('/rooms/checkins/active').catch(() => ({ data: [] })),
       ]);
-      setRooms(occRes.data.map((r: Room) => ({ ...r, currentCount: r.currentCount ?? 0 })));
+      setRooms(occRes.data.map((r: Room & { currentOccupancy?: number }) => ({ ...r, currentCount: r.currentOccupancy ?? 0 })));
       setTeachers(teachersRes.data);
       setSubjects(subjectsRes.data);
       setCheckins(checkinsRes.data);

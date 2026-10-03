@@ -4,22 +4,49 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../../../lib/api';
 import { Card, SkeletonCard, EmptyState, colors } from '../../../components/ui';
 
-interface RoomOccupancy {
+interface Assignment {
+  id: string;
+  teacher: { id: string; name: string };
+  subject: { id: string; name: string } | null;
+}
+
+interface Room {
   id: string;
   name: string;
   capacity: number;
-  currentCount: number;
-  students: { id: string; name: string }[];
-  teacher?: { id: string; name: string } | null;
-  subject?: { id: string; name: string } | null;
+  currentOccupancy: number;
+  assignments: Assignment[];
+}
+
+interface ActiveCheckin {
+  checkinId: string;
+  studentId: string;
+  studentName: string;
+  roomId: string;
 }
 
 export function RoomScreen() {
-  const [rooms, setRooms] = useState<RoomOccupancy[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [studentsByRoom, setStudentsByRoom] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(() => {
-    api.get('/rooms/occupancy').then((r) => setRooms(r.data)).finally(() => setLoading(false));
+    Promise.all([
+      api.get<Room[]>('/rooms/mine'),
+      api.get<Room[]>('/rooms/occupancy'),
+      api.get<ActiveCheckin[]>('/rooms/checkins/active'),
+    ])
+      .then(([mine, occupancy, checkins]) => {
+        const occupancyMap = new Map(occupancy.data.map((r) => [r.id, r.currentOccupancy]));
+        setRooms(mine.data.map((r) => ({ ...r, currentOccupancy: occupancyMap.get(r.id) ?? 0 })));
+
+        const byRoom: Record<string, string[]> = {};
+        for (const c of checkins.data) {
+          (byRoom[c.roomId] ??= []).push(c.studentName);
+        }
+        setStudentsByRoom(byRoom);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -28,9 +55,9 @@ export function RoomScreen() {
     return () => clearInterval(interval);
   }, [load]);
 
-  function pct(room: RoomOccupancy) {
+  function pct(room: Room) {
     if (!room.capacity) return 0;
-    return Math.min(100, Math.round((room.currentCount / room.capacity) * 100));
+    return Math.min(100, Math.round((room.currentOccupancy / room.capacity) * 100));
   }
 
   function barColor(p: number) {
@@ -42,7 +69,7 @@ export function RoomScreen() {
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
-        <Text style={s.title}>Ocupação das Salas</Text>
+        <Text style={s.title}>Minha Sala</Text>
         <TouchableOpacity onPress={load} style={s.refreshBtn}>
           <Text style={s.refreshText}>↻ Atualizar</Text>
         </TouchableOpacity>
@@ -51,32 +78,32 @@ export function RoomScreen() {
         {loading
           ? [1, 2, 3].map((i) => <SkeletonCard key={i} height={110} />)
           : rooms.length === 0
-            ? <EmptyState icon="🏫" message="Nenhuma sala cadastrada" />
+            ? <EmptyState icon="🏫" message="Você ainda não está alocado em nenhuma sala. Fale com a coordenação." />
             : rooms.map((room) => {
                 const p = pct(room);
                 const color = barColor(p);
+                const subjects = room.assignments.filter((a) => a.subject).map((a) => a.subject!.name);
+                const students = studentsByRoom[room.id] ?? [];
                 return (
                   <Card key={room.id} style={{ marginBottom: 12 }}>
                     <View style={s.roomHeader}>
                       <View style={{ flex: 1 }}>
                         <Text style={s.roomName}>{room.name}</Text>
-                        {(room.subject || room.teacher) && (
-                          <Text style={s.roomMeta}>
-                            {room.subject?.name}{room.subject && room.teacher ? ' · ' : ''}{room.teacher ? `Prof. ${room.teacher.name}` : ''}
-                          </Text>
+                        {subjects.length > 0 && (
+                          <Text style={s.roomMeta}>{subjects.join(', ')}</Text>
                         )}
                       </View>
-                      <Text style={[s.count, { color }]}>{room.currentCount}/{room.capacity}</Text>
+                      <Text style={[s.count, { color }]}>{room.currentOccupancy}/{room.capacity}</Text>
                     </View>
                     <View style={s.barBg}>
                       <View style={[s.barFill, { width: `${p}%` as any, backgroundColor: color }]} />
                     </View>
                     <Text style={s.pct}>{p}% ocupado</Text>
-                    {room.students.length > 0 && (
+                    {students.length > 0 && (
                       <View style={s.studentList}>
-                        {room.students.map((st) => (
-                          <View key={st.id} style={s.studentTag}>
-                            <Text style={s.studentTagText}>{st.name}</Text>
+                        {students.map((name) => (
+                          <View key={name} style={s.studentTag}>
+                            <Text style={s.studentTagText}>{name}</Text>
                           </View>
                         ))}
                       </View>

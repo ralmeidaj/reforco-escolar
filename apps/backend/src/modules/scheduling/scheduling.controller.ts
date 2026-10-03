@@ -84,6 +84,10 @@ export class SchedulingController {
     @Query('teacherId') teacherId?: string,
     @Query('studentId') studentId?: string,
   ) {
+    // Professor/aluno só veem as próprias sessões, mesmo que outro id venha na query —
+    // GET /sessions sem filtro nenhum não pode devolver a agenda de outro usuário.
+    if (req.user.role === 'teacher') teacherId = req.user.sub;
+    if (req.user.role === 'student') studentId = req.user.sub;
     return this.schedulingService.findSessions(req.tenant.id, from, to, teacherId, studentId);
   }
 
